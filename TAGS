@@ -1,0 +1,1602 @@
+
+rle.h,253
+#define RLE6_H_2,16
+#define LIKELY(7,70
+#define LIKELY(9,118
+	#define rle_rank1a(21,642
+const uint8_t rle_auxtab[rle_auxtab33,860
+#define RLE_MIN_SPACE 35,890
+#define rle_nptr(36,915
+#define rle_dec1(39,1008
+static inline int rle_enc1(53,1369
+
+is.c,225
+typedef unsigned char ubyte_t;33,1252
+#define chr(34,1283
+static void getCounts(37,1414
+static void getBuckets(43,1575
+static void induceSA(60,1833
+static int sais_main(100,2873
+int is_sa(191,5892
+int is_bwt(208,6339
+
+bwtsw2_chain.c,268
+	uint32_t tbeg,9,119
+	uint32_t tbeg, tend;9,119
+	int qbeg,10,141
+	int qbeg, qend;10,141
+	uint32_t flag:flag11,158
+	uint32_t flag:1, idx:idx11,158
+	int chain;12,184
+} hsaip_t;13,223
+#define _hsaip_lt(15,235
+KSORT_INIT(18,301
+void bsw2_chain_filter(48,1210
+
+kopen.c,789
+#define _KO_NO_NET22,366
+static int socket_wait(26,412
+static int socket_connect(41,743
+#define __err_connect(43,807
+#undef __err_connect58,1579
+static int write_bytes(61,1603
+static int http_open(76,1882
+	int max_response,144,3827
+	int max_response, ctrl_fd;144,3827
+	char *response;response145,3855
+} ftpaux_t;146,3872
+static int kftp_get_response(148,3885
+static int kftp_send_cmd(172,4578
+static int ftp_open(179,4848
+static char **cmd2argv(cmd2argv232,6395
+#define KO_STDIN 255,7062
+#define KO_FILE 256,7084
+#define KO_PIPE 257,7106
+#define KO_HTTP 258,7128
+#define KO_FTP 259,7150
+	int type,262,7190
+	int type, fd;262,7190
+	pid_t pid;263,7205
+} koaux_t;264,7217
+void *kopen(kopen266,7229
+int kclose(335,8987
+#define BUF_SIZE 349,9227
+int main(350,9252
+
+bntseq.h,626
+#define BWT_BNTSEQ_H29,1212
+#define BWA_UBYTE37,1330
+typedef uint8_t ubyte_t;38,1348
+	int64_t offset;42,1398
+	int32_t len;43,1415
+	int32_t n_ambs;44,1429
+	uint32_t gi;45,1446
+	int32_t is_alt;46,1460
+	char *name,name47,1477
+	char *name, *anno;anno47,1477
+} bntann1_t;48,1497
+	int64_t offset;51,1528
+	int32_t len;52,1545
+	char amb;53,1559
+} bntamb1_t;54,1570
+	int64_t l_pac;57,1601
+	int32_t n_seqs;58,1617
+	uint32_t seed;59,1634
+	bntann1_t *anns;anns60,1650
+	int32_t n_holes;61,1687
+	bntamb1_t *ambs;ambs62,1705
+	FILE *fp_pac;fp_pac63,1743
+} bntseq_t;64,1758
+static inline int64_t bns_depos(87,2610
+
+bwtgap.c,467
+#define STATE_M 11,162
+#define STATE_I 12,180
+#define STATE_D 13,198
+#define aln_score(15,217
+gap_stack_t *gap_init_stack2(gap_init_stack217,297
+gap_stack_t *gap_init_stack(gap_init_stack26,546
+void gap_destroy_stack(31,716
+static void gap_reset_stack(39,878
+static inline void gap_push(48,1068
+static inline void gap_pop(71,1882
+static inline void gap_shadow(86,2333
+static inline int int_log2(98,2619
+bwt_aln1_t *bwt_match_gap(bwt_match_gap109,2862
+
+rope.h,735
+#define ROPE_H_2,16
+#define ROPE_MAX_DEPTH 7,73
+#define ROPE_DEF_MAX_NODES 8,99
+#define ROPE_DEF_BLOCK_LEN 9,129
+typedef struct rpnode_s 11,161
+	struct rpnode_s *p;p12,187
+	uint64_t l:l13,318
+	uint64_t l:54, n:n13,318
+	uint64_t l:54, n:9, is_bottom:is_bottom13,318
+	int64_t c[c14,417
+} rpnode_t;15,451
+	int32_t max_nodes,18,481
+	int32_t max_nodes, block_len;18,481
+	int64_t c[c19,541
+	rpnode_t *root;root20,575
+	void *node,node21,592
+	void *node, *leaf;leaf21,592
+} rope_t;22,627
+	const rope_t *rope;rope25,655
+	const rpnode_t *pa[pa26,688
+	int ia[ia27,741
+	int d;28,795
+} rpitr_t;29,839
+	int beg;32,868
+	int64_t bc[bc33,878
+	uint8_t *p;p34,894
+} rpcache_t;35,907
+	#define rope_rank1a(45,1220
+
+bwtsw2_main.c,23
+int bwa_bwtsw2(11,171
+
+kstring.c,37
+int ksprintf(9,123
+int main(30,541
+
+example.c,20
+KSEQ_DECLARE(8,160
+
+bwtsw2_core.c,1696
+	bwtint_t k,16,262
+	bwtint_t k, l;16,262
+} qintv_t;17,278
+#define qintv_eq(19,290
+#define qintv_hash(20,348
+KHASH_INIT(23,411
+#define MINUS_INF 26,509
+#define MASK_LEVEL 27,539
+	bwtint_t qk,32,647
+	bwtint_t qk, ql;32,647
+	int I,33,665
+	int I, D,33,665
+	int I, D, G;33,665
+	uint32_t pj:pj34,679
+	uint32_t pj:2, qlen:qlen34,679
+	int tlen;35,704
+	int ppos,36,715
+	int ppos, upos;36,715
+	int cpos[cpos37,732
+} bsw2cell_t;38,746
+#define __hitG_lt(42,804
+KSORT_INIT_GENERIC(__hitG_lt41,780
+	int n,48,1071
+	int n, max;48,1071
+	uint32_t tk,49,1084
+	uint32_t tk, tl;49,1084
+	bsw2cell_t *array;array50,1118
+} bsw2entry_t, *bsw2entry_p;bsw2entry_p51,1138
+	int n_pending;55,1223
+	kvec_t(56,1239
+} bsw2stack_t;58,1304
+#define stack_isempty(60,1320
+static void stack_destroy(61,1392
+inline static void stack_push0(62,1515
+inline static bsw2entry_p stack_pop(63,1617
+typedef struct __mempool_t 71,1828
+	int cnt;72,1857
+	kvec_t(73,1912
+} mempool_t;74,1939
+inline static bsw2entry_p mp_alloc(75,1952
+inline static void mp_free(81,2131
+static void mp_destroy(86,2250
+static khash_t(99,2514
+static void cut_tail(134,3387
+static inline void remove_duplicate(159,4058
+static void merge_entry(186,4744
+static inline bsw2cell_t *push_array_p(push_array_p205,5344
+static inline double time_elapse(214,5565
+static void save_hits(223,5987
+static void save_narrow_hits(248,6768
+int bsw2_resolve_duphits(273,7560
+int bsw2_resolve_query_overlaps(349,9994
+bsw2global_t *bsw2_global_init(bsw2_global_init402,11484
+void bsw2_global_destroy(413,11746
+static inline int fill_cell(421,11909
+static void init_bwtsw2(435,12361
+bwtsw2_t **bsw2_core(bsw2_core449,12763
+
+bwt_gen.c,3512
+typedef uint64_t bgint_t;37,1072
+typedef int64_t sbgint_t;38,1098
+#define ALPHABET_SIZE	40,1125
+#define BIT_PER_CHAR	41,1152
+#define CHAR_PER_WORD	42,1178
+#define CHAR_PER_BYTE	43,1206
+#define BITS_IN_WORD 45,1234
+#define BITS_IN_BYTE 46,1258
+#define BYTES_IN_WORD 47,1281
+#define ALL_ONE_MASK 49,1306
+#define DNA_OCC_CNT_TABLE_SIZE_IN_WORD	50,1338
+#define BITS_PER_OCC_VALUE	52,1384
+#define OCC_VALUE_PER_WORD	53,1416
+#define OCC_INTERVAL	54,1447
+#define OCC_INTERVAL_MAJOR	55,1475
+#define TRUE 57,1511
+#define FALSE 58,1529
+#define BWTINC_INSERT_SORT_NUM_ITEM 60,1548
+#define MIN_AVAILABLE_WORD 62,1587
+#define average(64,1623
+#define min(65,1713
+#define max(66,1794
+#define med3(67,1875
+#define swap(68,1962
+#define truncateLeft(69,2012
+#define truncateRight(70,2087
+#define DNA_OCC_SUM_EXCEPTION(71,2162
+typedef struct BWT 73,2226
+	bgint_t textLength;74,2247
+	bgint_t inverseSa0;75,2294
+	bgint_t *cumulativeFreq;cumulativeFreq76,2330
+	unsigned int *bwtCode;bwtCode77,2382
+	unsigned int *occValue;occValue78,2421
+	bgint_t *occValueMajor;occValueMajor79,2488
+	unsigned int *decodeTable;decodeTable80,2555
+	bgint_t bwtSizeInWord;81,2621
+	bgint_t occSizeInWord;82,2699
+	bgint_t occMajorSizeInWord;83,2777
+} BWT;84,2859
+typedef struct BWTInc 86,2867
+	BWT *bwt;bwt87,2891
+	unsigned int numberOfIterationDone;88,2902
+	bgint_t *cumulativeCountInCurrentBuild;cumulativeCountInCurrentBuild89,2939
+	bgint_t availableWord;90,2980
+	bgint_t buildSize;91,3004
+	bgint_t initialMaxBuildSize;92,3024
+	bgint_t incMaxBuildSize;93,3054
+	unsigned int firstCharInLastIteration;94,3080
+	unsigned int *workingMemory;workingMemory95,3120
+	unsigned int *packedText;packedText96,3150
+	unsigned char *textBuffer;textBuffer97,3177
+	unsigned int *packedShift;packedShift98,3205
+} BWTInc;99,3233
+static bgint_t TextLengthFromBytePacked(101,3244
+static void initializeVAL(107,3460
+static void initializeVAL_bg(113,3632
+static void GenerateDNAOccCountTable(119,3797
+static bgint_t BWTOccValueMajorSizeInWord(135,4108
+static bgint_t BWTOccValueMinorSizeInWord(144,4536
+static bgint_t BWTResidentSizeInWord(151,4854
+static void BWTIncSetBuildSizeAndTextAddr(162,5189
+unsigned int leadingZero(207,7035
+static unsigned int ceilLog2(236,8087
+static unsigned int BitPerBytePackedChar(243,8260
+static unsigned int BitPerWordPackedChar(253,8659
+static void ConvertBytePackedToWordPacked(258,8770
+BWT *BWTCreate(BWTCreate323,10541
+BWTInc *BWTIncCreate(BWTIncCreate354,11377
+static void BWTIncPutPackedTextToRank(386,13087
+static void ForwardDNAAllOccCountNoLimit(430,14234
+static void BWTIncBuildPackedBwt(503,16369
+static inline bgint_t BWTOccValueExplicit(535,17336
+static unsigned int ForwardDNAOccCount(553,17983
+static unsigned int BackwardDNAOccCount(584,19031
+bgint_t BWTOccValue(618,20107
+static bgint_t BWTIncGetAbsoluteRank(642,20962
+static void BWTIncSortKey(694,22742
+	#define EQUAL_KEY_THRESHOLD	696,22843
+static void BWTIncBuildRelativeRank(872,27751
+static void BWTIncBuildBwt(932,29476
+static void BWTIncMergeBwt(950,29989
+void BWTClearTrailingBwtCode(1063,33333
+void BWTGenerateOccValueFromBwt(1087,33917
+static void BWTIncConstruct(1299,40762
+BWTInc *BWTIncConstructFromPacked(BWTIncConstructFromPacked1437,47986
+void BWTIncFree(1547,51878
+static bgint_t BWTFileSizeInWord(1560,52184
+void BWTSaveBwtCodeAndOcc(1566,52362
+void bwt_bwtgen2(1598,53303
+void bwt_bwtgen(1607,53643
+int bwt_bwtgen_main(1612,53744
+int main(1624,53945
+
+bamlite.c,710
+static inline int bam_is_big_endian(16,252
+static inline uint16_t bam_swap_endian_2(21,338
+static inline void *bam_swap_endian_2p(bam_swap_endian_2p25,468
+static inline uint32_t bam_swap_endian_4(30,582
+static inline void *bam_swap_endian_4p(bam_swap_endian_4p35,744
+static inline uint64_t bam_swap_endian_8(40,858
+static inline void *bam_swap_endian_8p(bam_swap_endian_8p46,1130
+int bam_is_be;56,1295
+bam_header_t *bam_header_init(bam_header_init58,1311
+void bam_header_destroy(64,1438
+bam_header_t *bam_header_read(bam_header_read78,1796
+static void swap_endian_data(117,3243
+int bam_read1(135,3938
+gzFile bamlite_gzopen(171,5111
+int bamlite_gzread(189,5575
+int bamlite_gzclose(201,5860
+
+bwashm.c,196
+int bwa_shm_stage(12,200
+bwaidx_t *bwa_idx_load_from_shm(bwa_idx_load_from_shm87,2190
+int bwa_shm_test(120,3124
+int bwa_shm_list(140,3631
+int bwa_shm_destroy(157,4025
+int main_shm(179,4521
+
+bwtindex.c,260
+int64_t bwa_seq_len(52,1557
+bwt_t *bwt_pac2bwt(bwt_pac2bwt65,1811
+int bwa_pac2bwt(129,3405
+#define bwt_B00(149,3931
+void bwt_bwtupdate_core(151,3992
+int bwa_bwtupdate(175,4788
+int bwa_bwt2sa(189,5081
+int bwa_index(210,5565
+int bwa_idx_build(256,7447
+
+kstring.h,423
+#define KSTRING_H2,18
+#define kroundup32(12,159
+#define KSTRING_T 16,288
+typedef struct __kstring_t 17,316
+	size_t l,18,345
+	size_t l, m;18,345
+	char *s;s19,359
+} kstring_t;20,369
+static inline void ks_resize(23,390
+static inline int kputsn(32,546
+static inline int kputs(45,792
+static inline int kputc(50,883
+static inline int kputw(62,1084
+static inline int kputuw(79,1487
+static inline int kputl(96,1869
+
+bwamem_pair.c,365
+#define MIN_RATIO 16,236
+#define MIN_DIR_CNT 17,262
+#define MIN_DIR_RATIO 18,287
+#define OUTLIER_BOUND 19,314
+#define MAPPING_BOUND 20,340
+#define MAX_STDDEV 21,366
+static inline int mem_infer_dir(23,393
+static int cal_sub(32,722
+void mem_pestat(46,1282
+int mem_matesw(111,4463
+int mem_pair(182,7913
+#define raw_mapq(248,10776
+int mem_sam_pe(250,10839
+
+bwamem.h,2552
+#define BWAMEM_H_2,18
+#define MEM_MAPQ_COEF 8,92
+#define MEM_MAPQ_MAX 9,119
+typedef struct __smem_i smem_i;12,162
+#define MEM_F_PE 14,195
+#define MEM_F_NOPAIRING 15,223
+#define MEM_F_ALL 16,251
+#define MEM_F_NO_MULTI 17,279
+#define MEM_F_NO_RESCUE 18,308
+#define MEM_F_REF_HDR	19,337
+#define MEM_F_SOFTCLIP 20,365
+#define MEM_F_SMARTPE 21,395
+#define MEM_F_PRIMARY5 22,425
+#define MEM_F_KEEP_SUPP_MAPQ 23,455
+#define MEM_F_XB 24,491
+	int a,27,540
+	int a, b;27,540
+	int o_del,28,601
+	int o_del, e_del;28,601
+	int o_ins,29,620
+	int o_ins, e_ins;29,620
+	int pen_unpaired;30,639
+	int pen_clip5,31,707
+	int pen_clip5,pen_clip3;31,707
+	int w;32,799
+	int zdrop;33,838
+	uint64_t max_mem_intv;35,877
+	int T;37,902
+	int flag;38,976
+	int min_seed_len;39,1023
+	int min_chain_weight;40,1071
+	int max_chain_extend;41,1094
+	float split_factor;42,1117
+	int split_width;43,1211
+	int max_occ;44,1301
+	int max_chain_gap;45,1384
+	int n_threads;46,1483
+	int chunk_size;47,1529
+	float mask_level;48,1600
+	float drop_ratio;49,1749
+	float XA_drop_ratio;50,1906
+	float mask_level_redun;51,2057
+	float mapQ_coef_len;52,2082
+	int mapQ_coef_fac;53,2104
+	int max_ins;54,2124
+	int max_matesw;55,2240
+	int max_XA_hits,56,2328
+	int max_XA_hits, max_XA_hits_alt;56,2328
+	int8_t mat[mat57,2414
+} mem_opt_t;58,2479
+	int64_t rb,61,2510
+	int64_t rb, re;61,2510
+	int qb,62,2575
+	int qb, qe;62,2575
+	int rid;63,2636
+	int score;64,2673
+	int truesc;65,2713
+	int sub;66,2812
+	int alt_sc;67,2850
+	int csub;68,2863
+	int sub_n;69,2908
+	int w;70,2966
+	int seedcov;71,3022
+	int secondary;72,3078
+	int secondary_all;73,3163
+	int seedlen0;74,3183
+	int n_comp:n_comp75,3231
+	int n_comp:30, is_alt:is_alt75,3231
+	float frac_rep;76,3302
+	uint64_t hash;77,3319
+} mem_alnreg_t;78,3335
+typedef struct { size_t n,80,3352
+typedef struct { size_t n, m;80,3352
+typedef struct { size_t n, m; mem_alnreg_t *a;a80,3352
+typedef struct { size_t n, m; mem_alnreg_t *a; } mem_alnreg_v;80,3352
+	int low,83,3433
+	int low, high;83,3433
+	int failed;84,3538
+	double avg,85,3623
+	double avg, std;85,3623
+} mem_pestat_t;86,3692
+	int64_t pos;89,3782
+	int rid;90,3842
+	int flag;91,3917
+	uint32_t is_rev:is_rev92,3949
+	uint32_t is_rev:1, is_alt:is_alt92,3949
+	uint32_t is_rev:1, is_alt:1, mapq:mapq92,3949
+	uint32_t is_rev:1, is_alt:1, mapq:8, NM:NM92,3949
+	int n_cigar;93,4077
+	uint32_t *cigar;cigar94,4125
+	char *XA;XA95,4222
+	int score,97,4265
+	int score, sub,97,4265
+	int score, sub, alt_sc;97,4265
+} mem_aln_t;98,4290
+
+bwtsw2_pair.c,526
+#define MIN_RATIO 16,254
+#define OUTLIER_BOUND 17,280
+#define MAX_STDDEV 18,306
+#define EXT_STDDEV 19,332
+	int low,22,376
+	int low, high,22,376
+	int low, high, failed;22,376
+	double avg,23,400
+	double avg, std;23,400
+} bsw2pestat_t;24,418
+bsw2pestat_t bsw2_stat(26,435
+	int n_cigar,98,3410
+	int n_cigar, beg,98,3410
+	int n_cigar, beg, end,98,3410
+	int n_cigar, beg, end, len;98,3410
+	int64_t pos;99,3439
+	uint32_t *cigar;cigar100,3453
+} pairaux_t;101,3471
+void bsw2_pair1(105,3527
+void bsw2_pair(164,5849
+
+bwtsw2_aux.c,1132
+#define __left_lt(22,349
+unsigned char nt_comp_table[nt_comp_table32,537
+bsw2opt_t *bsw2_init_opt(bsw2_init_opt54,1846
+void bsw2_destroy(68,2255
+bwtsw2_t *bsw2_dup_no_cigar(bsw2_dup_no_cigar78,2425
+#define __gen_ap(91,2698
+void bsw2_extend_left(100,3039
+void bsw2_extend_rght(144,4425
+static void gen_cigar(173,5373
+void bsw2_debug_hits(215,6794
+static void merge_hits(226,7126
+static bwtsw2_t *bsw2_aln1_core(bsw2_aln1_core248,7676
+static void flag_fr(298,9453
+	int n,322,10004
+	int n, max;322,10004
+	bsw2seq1_t *seq;seq323,10017
+} bsw2seq_t;324,10035
+static int fix_cigar(326,10049
+static void write_aux(399,12262
+static void update_mate_aux(438,13642
+static void print_hits(477,15148
+static void update_opt(545,17771
+static void bsw2_aln_core(561,18378
+	int tid,648,21089
+	int tid, is_pe;648,21089
+	bsw2seq_t *_seq;_seq649,21106
+	const bsw2opt_t *_opt;_opt650,21124
+	const bntseq_t *bns;bns651,21148
+	uint8_t *pac;pac652,21170
+	const bwt_t *target;target653,21185
+} thread_aux_t;654,21207
+static void *worker(worker657,21298
+static void process_seqs(667,21573
+void bsw2_aln(727,23564
+
+bwtaln.h,3815
+#define BWTALN_H2,17
+#define BWA_TYPE_NO_MATCH 7,73
+#define BWA_TYPE_UNIQUE 8,101
+#define BWA_TYPE_REPEAT 9,127
+#define BWA_TYPE_MATESW 10,153
+#define SAM_FPD 12,180
+#define SAM_FPP 13,210
+#define SAM_FSU 14,249
+#define SAM_FMU 15,286
+#define SAM_FSR 16,323
+#define SAM_FMR 17,373
+#define SAM_FR1 18,423
+#define SAM_FR2 19,463
+#define SAM_FSC 20,503
+#define BWA_AVG_ERR 22,547
+#define BWA_MIN_RDLEN 23,572
+#define BWA_MAX_BCLEN 25,619
+#define bns_pac(28,707
+#define FROM_M 31,776
+#define FROM_I 32,793
+#define FROM_D 33,810
+#define FROM_S 34,827
+#define SAI_MAGIC 36,845
+	bwtint_t w;39,889
+	int bid;40,902
+} bwt_width_t;41,912
+	uint64_t n_mm:n_mm44,945
+	uint64_t n_mm:8, n_gapo:n_gapo44,945
+	uint64_t n_mm:8, n_gapo:8, n_gape:n_gape44,945
+	uint64_t n_mm:8, n_gapo:8, n_gape:8, score:score44,945
+	uint64_t n_mm:8, n_gapo:8, n_gape:8, score:20, n_ins:n_ins44,945
+	uint64_t n_mm:8, n_gapo:8, n_gape:8, score:20, n_ins:10, n_del:n_del44,945
+	bwtint_t k,45,1013
+	bwtint_t k, l;45,1013
+} bwt_aln1_t;46,1029
+typedef uint16_t bwa_cigar_t;48,1044
+#define CIGAR_OP_SHIFT 52,1187
+#define CIGAR_LN_MASK 53,1213
+#define __cigar_op(55,1243
+#define __cigar_len(56,1299
+#define __cigar_create(57,1354
+	uint32_t n_cigar:n_cigar60,1443
+	uint32_t n_cigar:15, gap:gap60,1443
+	uint32_t n_cigar:15, gap:8, mm:mm60,1443
+	uint32_t n_cigar:15, gap:8, mm:8, strand:strand60,1443
+	int ref_shift;61,1488
+	bwtint_t pos;62,1504
+	bwa_cigar_t *cigar;cigar63,1519
+} bwt_multi1_t;64,1540
+	char *name;name67,1574
+	ubyte_t *seq,seq68,1587
+	ubyte_t *seq, *rseq,rseq68,1587
+	ubyte_t *seq, *rseq, *qual;qual68,1587
+	uint32_t len:len69,1616
+	uint32_t len:20, strand:strand69,1616
+	uint32_t len:20, strand:1, type:type69,1616
+	uint32_t len:20, strand:1, type:2, dummy:dummy69,1616
+	uint32_t len:20, strand:1, type:2, dummy:1, extra_flag:extra_flag69,1616
+	uint32_t n_mm:n_mm70,1675
+	uint32_t n_mm:8, n_gapo:n_gapo70,1675
+	uint32_t n_mm:8, n_gapo:8, n_gape:n_gape70,1675
+	uint32_t n_mm:8, n_gapo:8, n_gape:8, mapQ:mapQ70,1675
+	int score;71,1721
+	int clip_len;72,1733
+	int n_aln;74,1781
+	bwt_aln1_t *aln;aln75,1793
+	int n_multi;77,1829
+	bwt_multi1_t *multi;multi78,1843
+	bwtint_t sa,80,1891
+	bwtint_t sa, pos;80,1891
+	uint64_t c1:c181,1910
+	uint64_t c1:28, c2:c281,1910
+	uint64_t c1:28, c2:28, seQ:seQ81,1910
+	int ref_shift;82,1990
+	int n_cigar;83,2006
+	bwa_cigar_t *cigar;cigar84,2020
+	int tid;86,2070
+	char bc[bc88,2092
+	uint32_t full_len:full_len90,2184
+	uint32_t full_len:20, nm:nm90,2184
+	char *md;md91,2214
+} bwa_seq_t;92,2225
+#define BWA_MODE_GAPE 94,2239
+#define BWA_MODE_COMPREAD 95,2272
+#define BWA_MODE_LOGGAP 96,2305
+#define BWA_MODE_CFY 97,2338
+#define BWA_MODE_NONSTOP 98,2371
+#define BWA_MODE_BAM 99,2404
+#define BWA_MODE_BAM_SE 100,2437
+#define BWA_MODE_BAM_READ1 101,2470
+#define BWA_MODE_BAM_READ2 102,2503
+#define BWA_MODE_IL13 103,2537
+	int s_mm,106,2589
+	int s_mm, s_gapo,106,2589
+	int s_mm, s_gapo, s_gape;106,2589
+	int mode;107,2616
+	int indel_end_skip,108,2663
+	int indel_end_skip, max_del_occ,108,2663
+	int indel_end_skip, max_del_occ, max_entries;108,2663
+	float fnr;109,2710
+	int max_diff,110,2722
+	int max_diff, max_gapo,110,2722
+	int max_diff, max_gapo, max_gape;110,2722
+	int max_seed_diff,111,2757
+	int max_seed_diff, seed_len;111,2757
+	int n_threads;112,2787
+	int max_top2;113,2803
+	int trim_qual;114,2818
+} gap_opt_t;115,2834
+#define BWA_PET_STD 117,2848
+	int max_isize,120,2890
+	int max_isize, force_isize;120,2890
+	int max_occ;121,2919
+	int n_multi,122,2933
+	int n_multi, N_multi;122,2933
+	int type,123,2956
+	int type, is_sw,123,2956
+	int type, is_sw, is_preload;123,2956
+	double ap_prior;124,2986
+} pe_opt_t;125,3004
+typedef struct __bwa_seqio_t bwa_seqio_t;128,3039
+
+kvec.h,353
+#define AC_KVEC_H49,1467
+#define kv_roundup32(57,1569
+#define kvec_t(59,1675
+#define kv_init(60,1729
+#define kv_destroy(61,1779
+#define kv_A(62,1813
+#define kv_pop(63,1845
+#define kv_size(64,1880
+#define kv_max(65,1907
+#define kv_resize(67,1934
+#define kv_copy(69,2033
+#define kv_push(75,2238
+#define kv_pushp(83,2483
+#define kv_a(88,2681
+
+bwa.h,709
+#define BWA_H_2,15
+#define BWA_IDX_BWT 8,89
+#define BWA_IDX_BNS 9,113
+#define BWA_IDX_PAC 10,137
+#define BWA_IDX_ALL 11,161
+#define BWA_CTL_SIZE 13,186
+#define BWTALGO_AUTO 15,216
+#define BWTALGO_RB2 16,240
+#define BWTALGO_BWTSW 17,264
+#define BWTALGO_IS 18,288
+	bwt_t    *bwt;bwt21,330
+	bntseq_t *bns;bns22,358
+	uint8_t  *pac;pac23,416
+	int    is_shm;25,517
+	int64_t l_mem;26,533
+	uint8_t  *mem;mem27,549
+} bwaidx_t;28,565
+	int l_seq,31,595
+	int l_seq, id;31,595
+	char *name,name32,611
+	char *name, *comment,comment32,611
+	char *name, *comment, *seq,seq32,611
+	char *name, *comment, *seq, *qual,qual32,611
+	char *name, *comment, *seq, *qual, *sam;sam32,611
+} bseq1_t;33,653
+
+fastmap.c,497
+KSEQ_DECLARE(15,266
+	kseq_t *ks,ks24,507
+	kseq_t *ks, *ks2;ks224,507
+	mem_opt_t *opt;opt25,526
+	mem_pestat_t *pes0;pes026,543
+	int64_t n_processed;27,564
+	int copy_comment,28,586
+	int copy_comment, actual_chunk_size;28,586
+	bwaidx_t *idx;idx29,624
+} ktp_aux_t;30,640
+	ktp_aux_t *aux;aux33,671
+	int n_seqs;34,688
+	bseq1_t *seqs;seqs35,701
+} ktp_data_t;36,717
+static void *process(process38,732
+static void update_a(99,2863
+int main_mem(115,3410
+int main_fastmap(374,16473
+
+rope.c,838
+#define MP_CHUNK_SIZE 13,198
+	int size,16,328
+	int size, i,16,328
+	int size, i, n_elems;16,328
+	int64_t top,17,351
+	int64_t top, max;17,351
+	uint8_t **mem;mem18,370
+} mempool_t;19,386
+static mempool_t *mp_init(mp_init21,400
+static void mp_destroy(31,583
+static inline void *mp_alloc(mp_alloc38,714
+rope_t *rope_init(rope_init55,1090
+void rope_destroy(71,1553
+static inline rpnode_t *split_node(split_node78,1653
+int64_t rope_insert_run(114,3200
+static rpnode_t *rope_count_to_leaf(rope_count_to_leaf150,5071
+void rope_rank2a(179,5662
+void rope_itr_first(200,6269
+const uint8_t *rope_itr_next_block(rope_itr_next_block208,6509
+void rope_print_node(225,7007
+void rope_dump_node(253,7554
+void rope_dump(270,7920
+rpnode_t *rope_restore_node(rope_restore_node277,8065
+rope_t *rope_restore(rope_restore308,8733
+
+maxk.c,21
+KSEQ_DECLARE(10,172
+
+bwt.h,857
+#define BWA_BWT_H29,1209
+#define OCC_INTV_SHIFT 35,1395
+#define OCC_INTERVAL 36,1420
+#define OCC_INTV_MASK 37,1465
+#define BWA_UBYTE40,1526
+typedef unsigned char ubyte_t;41,1544
+typedef uint64_t bwtint_t;44,1583
+	bwtint_t primary;47,1628
+	bwtint_t L2[L248,1689
+	bwtint_t seq_len;49,1731
+	bwtint_t bwt_size;50,1769
+	uint32_t *bwt;bwt51,1821
+	uint32_t cnt_table[cnt_table53,1888
+	int sa_intv;55,1931
+	bwtint_t n_sa;56,1945
+	bwtint_t *sa;sa57,1961
+} bwt_t;58,1976
+	bwtint_t x[x61,2003
+	bwtint_t x[3], info;61,2003
+} bwtintv_t;62,2025
+typedef struct { size_t n,64,2039
+typedef struct { size_t n, m;64,2039
+typedef struct { size_t n, m; bwtintv_t *a;a64,2039
+typedef struct { size_t n, m; bwtintv_t *a; } bwtintv_v;64,2039
+#define bwt_bwt(72,2502
+#define bwt_occ_intv(73,2585
+#define bwt_B0(78,2812
+#define bwt_set_intv(80,2869
+
+ksort.h,580
+#define AC_KSORT_H56,1768
+	void *left,left66,1908
+	void *left, *right;right66,1908
+	int depth;67,1929
+} ks_isort_stack_t;68,1941
+#define KSORT_SWAP(70,1962
+#define KSORT_INIT(72,2039
+#define ks_mergesort(257,9034
+#define ks_introsort(258,9099
+#define ks_combsort(259,9158
+#define ks_heapsort(260,9215
+#define ks_heapmake(261,9272
+#define ks_heapadjust(262,9329
+#define ks_ksmall(263,9396
+#define ks_lt_generic(265,9456
+#define ks_lt_str(266,9496
+typedef const char *ksstr_t;ksstr_t268,9544
+#define KSORT_INIT_GENERIC(270,9574
+#define KSORT_INIT_STR 271,9651
+
+utils.h,777
+#define LH3_UTILS_H29,1211
+#define ATTRIBUTE(37,1360
+#define ATTRIBUTE(39,1411
+#define err_fatal_simple(42,1443
+#define err_fatal_simple_core(43,1506
+#define xopen(45,1580
+#define xreopen(46,1639
+#define xzopen(47,1710
+#define xassert(49,1772
+	uint64_t x,52,1872
+	uint64_t x, y;52,1872
+} pair64_t;53,1888
+typedef struct { size_t n,55,1901
+typedef struct { size_t n, m;55,1901
+typedef struct { size_t n, m; uint64_t *a;a55,1901
+typedef struct { size_t n, m; uint64_t *a; } uint64_v;55,1901
+typedef struct { size_t n,56,1956
+typedef struct { size_t n, m;56,1956
+typedef struct { size_t n, m; pair64_t *a;a56,1956
+typedef struct { size_t n, m; pair64_t *a; } pair64_v;56,1956
+	void err_fatal(62,2052
+#define err_rewind(74,2900
+#define err_putchar(81,3203
+
+bwase.c,664
+int g_log_n[g_log_n20,331
+void bwa_aln2seq_core(22,350
+void bwa_aln2seq(96,2659
+int bwa_approx_mapQ(101,2769
+bwtint_t bwa_sa2pos(112,3025
+void bwa_cal_pac_pos_core(131,3974
+void bwa_cal_pac_pos(144,4590
+#define SW_BW 167,5347
+bwa_cigar_t *bwa_refine_gapped_core(bwa_refine_gapped_core169,5365
+char *bwa_cal_md1(bwa_cal_md1201,6556
+void bwa_correct_trimmed(251,7927
+void bwa_refine_gapped(287,9067
+int64_t pos_end(333,10718
+int64_t pos_end_multi(346,10988
+static int64_t pos_5(359,11297
+void bwa_print_seq(366,11431
+void bwa_print_sam1(386,11991
+void bwase_initialize(501,16466
+void bwa_sai2sam_se_core(507,16574
+int bwa_sai2sam_se(579,18801
+
+bwt_lite.h,362
+#define BWT_LITE_H_2,20
+	uint32_t seq_len,7,79
+	uint32_t seq_len, bwt_size,7,79
+	uint32_t seq_len, bwt_size, n_occ;7,79
+	uint32_t primary;8,115
+	uint32_t *bwt,bwt9,134
+	uint32_t *bwt, *occ,occ9,134
+	uint32_t *bwt, *occ, *sa,sa9,134
+	uint32_t *bwt, *occ, *sa, L2[L29,134
+	uint32_t cnt_table[cnt_table10,168
+} bwtl_t;11,194
+#define bwtl_B0(13,205
+
+bwape.c,1089
+	int n;20,325
+	bwtint_t *a;a21,333
+} poslist_t;22,347
+	double avg,25,378
+	double avg, std,25,378
+	double avg, std, ap_prior;25,378
+	bwtint_t low,26,406
+	bwtint_t low, high,26,406
+	bwtint_t low, high, high_bayesian;26,406
+} isize_info_t;27,442
+#define b128_eq(29,459
+#define b128_hash(30,516
+KHASH_INIT(33,575
+	pair64_v arr;36,654
+	pair64_v pos[pos37,669
+	kvec_t(38,687
+} pe_data_t;39,715
+#define MIN_HASH_WIDTH 41,729
+static kh_b128_t *g_hash;g_hash44,797
+pe_opt_t *bwa_init_pe_opt(bwa_init_pe_opt53,1228
+#define OUTLIER_BOUND 79,1769
+static int infer_isize(81,1796
+static int pairing(156,5067
+#define __pairing_aux(166,5531
+#define __pairing_aux2(183,6326
+	kvec_t(257,9152
+} aln_buf_t;258,9177
+int bwa_cal_pac_pos_pe(260,9191
+#define SW_MIN_MATCH_LEN 405,14207
+#define SW_MIN_MAPQ 406,14235
+bwa_cigar_t *bwa_sw_core(bwa_sw_core409,14298
+ubyte_t *bwa_paired_sw(bwa_paired_sw496,17152
+#define __set_rght_coor(525,18240
+#define __set_left_coor(532,18580
+#define __set_fixed(539,18891
+void bwa_sai2sam_pe_core(624,22963
+int bwa_sai2sam_pe(733,26977
+
+malloc_wrap.h,231
+#define MALLOC_WRAP_H2,22
+#    undef calloc26,652
+#  define calloc(28,679
+#    undef malloc31,773
+#  define malloc(33,800
+#    undef realloc36,895
+#  define realloc(38,923
+#    undef strdup41,1017
+#  define strdup(43,1044
+
+bwa.c,865
+int bwa_verbose 16,252
+char bwa_rg_id[bwa_rg_id17,273
+char *bwa_pg;bwa_pg18,294
+KSEQ_DECLARE(25,407
+static inline char *dupkstring(dupkstring33,571
+static inline void kseq2bseq1(43,788
+bseq1_t *bseq_read(bseq_read52,1133
+void bseq_classify(87,2055
+void bwa_fill_scmat(109,2641
+uint32_t *bwa_gen_cigar2(bwa_gen_cigar2121,2933
+uint32_t *bwa_gen_cigar(bwa_gen_cigar209,6421
+char *bwa_idx_infer_prefix(bwa_idx_infer_prefix218,6789
+bwt_t *bwa_idx_load_bwt(bwa_idx_load_bwt244,7287
+bwaidx_t *bwa_idx_load_from_disk(bwa_idx_load_from_disk262,7786
+bwaidx_t *bwa_idx_load(bwa_idx_load291,8675
+void bwa_idx_destroy(296,8777
+int bwa_mem2idx(310,9090
+int bwa_idx2mem(335,10114
+void bwa_print_sam_hdr(380,11751
+static char *bwa_escape(bwa_escape403,12508
+char *bwa_set_rg(bwa_set_rg419,12802
+char *bwa_insert_header(bwa_insert_header452,13815
+
+kseq.h,718
+#define AC_KSEQ_H29,1223
+#define KS_SEP_SPACE 39,1364
+#define KS_SEP_TAB 40,1420
+#define KS_SEP_LINE 41,1464
+#define KS_SEP_MAX 42,1538
+#define __KS_TYPE(44,1562
+#define ks_eof(51,1727
+#define ks_rewind(52,1789
+#define __KS_BASIC(54,1857
+#define __KS_GETC(70,2341
+#define KSTRING_T 83,2756
+typedef struct __kstring_t 84,2784
+	size_t l,85,2813
+	size_t l, m;85,2813
+	char *s;s86,2827
+} kstring_t;87,2837
+#define kroundup32(91,2877
+#define __KS_GETUNTIL(94,2988
+#define KSTREAM_INIT(147,5185
+#define kseq_rewind(153,5368
+#define __KSEQ_BASIC(155,5465
+#define __KSEQ_READ(175,6075
+#define __KSEQ_TYPE(217,8267
+#define KSEQ_INIT2(224,8430
+#define KSEQ_INIT(230,8601
+#define KSEQ_DECLARE(232,8671
+
+pemerge.c,732
+#define MAX_SCORE_RATIO 19,313
+#define MAX_ERR 20,342
+static const char *err_msg[err_msg22,361
+	int a,35,823
+	int a, b,35,823
+	int a, b, q,35,823
+	int a, b, q, r,35,823
+	int a, b, q, r, w;35,823
+	int q_def,36,843
+	int q_def, q_thres;36,843
+	int T;37,864
+	int chunk_size;38,872
+	int n_threads;39,889
+	int flag;40,905
+	int8_t mat[mat41,958
+} pem_opt_t;42,975
+pem_opt_t *pem_opt_init(pem_opt_init44,989
+int bwa_pemerge(59,1320
+static inline void print_bseq(147,4908
+	int n,161,5241
+	int n, start;161,5241
+	bseq1_t *seqs;seqs162,5256
+	int64_t cnt[cnt163,5272
+	const pem_opt_t *opt;opt164,5297
+} worker_t;165,5320
+void *worker(worker167,5333
+static void process_seqs(176,5521
+int main_pemerge(217,6596
+
+khash.h,2227
+#define __AC_KHASH_H105,2799
+#define AC_VERSION_KHASH_H 113,2871
+typedef unsigned int khint32_t;126,3098
+typedef unsigned long khint32_t;128,3161
+typedef unsigned long khint64_t;132,3230
+typedef unsigned long long khint64_t;134,3269
+#define kh_inline 138,3331
+#define kh_inline 140,3364
+typedef khint32_t khint_t;143,3397
+typedef khint_t khiter_t;144,3424
+#define __ac_isempty(146,3451
+#define __ac_isdel(147,3513
+#define __ac_iseither(148,3573
+#define __ac_set_isdel_false(149,3636
+#define __ac_set_isempty_false(150,3710
+#define __ac_set_isboth_false(151,3786
+#define __ac_set_isdel_true(152,3861
+#define __ac_inc(155,3952
+#define __ac_inc(157,3983
+#define __ac_fsize(160,4044
+#define kroundup32(163,4109
+#define kcalloc(167,4236
+#define kmalloc(170,4292
+#define krealloc(173,4345
+#define kfree(176,4401
+static const double __ac_HASH_UPPER 179,4434
+#define __KHASH_TYPE(181,4479
+#define __KHASH_PROTOTYPES(189,4679
+#define __KHASH_IMPL(198,5178
+#define KHASH_DECLARE(345,11916
+#define KHASH_INIT2(349,12064
+#define KHASH_INIT(353,12287
+#define kh_int_hash_func(363,12640
+#define kh_int_hash_equal(367,12749
+#define kh_int64_hash_func(373,12938
+#define kh_int64_hash_equal(377,13078
+static kh_inline khint_t __ac_X31_hash_string(383,13268
+#define kh_str_hash_func(394,13618
+#define kh_str_hash_equal(398,13740
+static kh_inline khint_t __ac_Wang_hash(400,13793
+#define kh_int_hash_func2(410,14014
+#define khash_t(420,14236
+#define kh_init(427,14437
+#define kh_destroy(434,14640
+#define kh_clear(441,14879
+#define kh_resize(449,15122
+#define kh_put(461,15635
+#define kh_get(470,15996
+#define kh_del(478,16283
+#define kh_exist(486,16566
+#define kh_key(494,16827
+#define kh_val(503,17138
+#define kh_value(508,17227
+#define kh_begin(515,17427
+#define kh_end(522,17618
+#define kh_size(529,17855
+#define kh_n_buckets(536,18086
+#define kh_foreach(545,18417
+#define kh_foreach_value(559,18901
+#define KHASH_SET_INIT_INT(572,19279
+#define KHASH_MAP_INIT_INT(580,19569
+#define KHASH_SET_INIT_INT64(587,19835
+#define KHASH_MAP_INIT_INT64(595,20138
+typedef const char *kh_cstr_t;kh_cstr_t598,20274
+#define KHASH_SET_INIT_STR(603,20438
+#define KHASH_MAP_INIT_STR(611,20732
+
+bamlite.h,1930
+#define BAMLITE_H_2,19
+#define USE_VERBOSE_ZLIB_WRAPPERS11,140
+typedef gzFile bamFile;13,175
+#  define bam_open(16,276
+#  define bam_dopen(17,335
+#  define bam_close(18,387
+#  define bam_read(19,441
+#  define bam_open(21,511
+#  define bam_dopen(22,562
+#  define bam_close(23,614
+#  define bam_read(24,660
+	int32_t n_targets;28,773
+	char **target_name;target_name29,793
+	uint32_t *target_len;target_len30,814
+	size_t l_text,31,837
+	size_t l_text, n_text;31,837
+	char *text;text32,861
+} bam_header_t;33,874
+#define BAM_FPAIRED 35,891
+#define BAM_FPROPER_PAIR 36,920
+#define BAM_FUNMAP 37,949
+#define BAM_FMUNMAP 38,978
+#define BAM_FREVERSE 39,1007
+#define BAM_FMREVERSE 40,1036
+#define BAM_FREAD1 41,1065
+#define BAM_FREAD2 42,1094
+#define BAM_FSECONDARY 43,1123
+#define BAM_FQCFAIL 44,1152
+#define BAM_FDUP 45,1181
+#define BAM_CIGAR_SHIFT 47,1211
+#define BAM_CIGAR_MASK 48,1237
+#define BAM_CMATCH 50,1291
+#define BAM_CINS 51,1317
+#define BAM_CDEL 52,1343
+#define BAM_CREF_SKIP 53,1369
+#define BAM_CSOFT_CLIP 54,1395
+#define BAM_CHARD_CLIP 55,1421
+#define BAM_CPAD 56,1447
+	int32_t tid;59,1491
+	int32_t pos;60,1505
+	uint32_t bin:bin61,1519
+	uint32_t bin:16, qual:qual61,1519
+	uint32_t bin:16, qual:8, l_qname:l_qname61,1519
+	uint32_t flag:flag62,1556
+	uint32_t flag:16, n_cigar:n_cigar62,1556
+	int32_t l_qseq;63,1587
+	int32_t mtid;64,1604
+	int32_t mpos;65,1619
+	int32_t isize;66,1634
+} bam1_core_t;67,1650
+	bam1_core_t core;70,1683
+	int l_aux,71,1702
+	int l_aux, data_len,71,1702
+	int l_aux, data_len, m_data;71,1702
+	uint8_t *data;data72,1732
+} bam1_t;73,1748
+#define kroundup32(76,1778
+#define bam1_strand(79,1889
+#define bam1_mstrand(80,1949
+#define bam1_cigar(81,2011
+#define bam1_qname(82,2078
+#define bam1_seq(83,2121
+#define bam1_qual(84,2195
+#define bam1_seqi(85,2300
+#define bam1_aux(86,2358
+#define bam_init1(88,2479
+#define bam_destroy1(89,2536
+
+bwt.c,708
+void bwt_gen_cnt_table(42,1427
+static inline bwtint_t bwt_invPsi(53,1665
+void bwt_cal_sa(62,1935
+bwtint_t bwt_sa(86,2647
+static inline int __occ_aux(98,2972
+bwtint_t bwt_occ(107,3320
+void bwt_2occ(132,4111
+#define __occ_aux4(165,5212
+void bwt_occ4(169,5380
+void bwt_2occ4(189,6137
+int bwt_match_exact(222,7407
+int bwt_match_exact_alt(241,7902
+void bwt_extend(262,8405
+static void bwt_reverse_intvs(277,8987
+int bwt_smem1a(289,9244
+int bwt_smem1(353,11962
+int bwt_seed_strategy1(358,12147
+void bwt_dump_bwt(385,12872
+void bwt_dump_sa(396,13144
+static bwtint_t fread_fix(409,13539
+void bwt_restore_sa(421,13959
+bwt_t *bwt_restore_bwt(bwt_restore_bwt443,14700
+void bwt_destroy(464,15242
+
+bwt_lite.c,147
+bwtl_t *bwtl_seq2bwtl(bwtl_seq2bwtl13,221
+uint32_t bwtl_occ(59,1400
+void bwtl_occ4(72,1918
+void bwtl_2occ4(87,2419
+void bwtl_destroy(92,2570
+
+ksw.c,1037
+#define LIKELY(37,1343
+#define UNLIKELY(38,1385
+#define LIKELY(40,1435
+#define UNLIKELY(41,1457
+const kswr_t g_defr 44,1489
+struct _kswq_t 46,1543
+	int qlen,47,1560
+	int qlen, slen;47,1560
+	uint8_t shift,48,1577
+	uint8_t shift, mdiff,48,1577
+	uint8_t shift, mdiff, max,48,1577
+	uint8_t shift, mdiff, max, size;48,1577
+	__m128i *qp,qp49,1611
+	__m128i *qp, *H0,H049,1611
+	__m128i *qp, *H0, *H1,H149,1611
+	__m128i *qp, *H0, *H1, *E,E49,1611
+	__m128i *qp, *H0, *H1, *E, *Hmax;Hmax49,1611
+kswq_t *ksw_qinit(ksw_qinit63,1995
+kswr_t ksw_u8(111,3643
+#define __max_16(118,3949
+kswr_t ksw_i16(232,8418
+#define __max_8(239,8718
+static inline void revseq(336,11738
+kswr_t ksw_align2(343,11878
+kswr_t ksw_align(367,12903
+	int32_t h,377,13223
+	int32_t h, e;377,13223
+} eh_t;378,13238
+int ksw_extend2(380,13247
+int ksw_extend(481,17163
+#define MINUS_INF 490,17599
+static inline uint32_t *push_cigar(push_cigar492,17630
+int ksw_global2(504,18003
+int ksw_global(608,22157
+KSEQ_INIT(623,22660
+int main(644,23577
+
+bwamem_extra.c,598
+struct __smem_i 11,188
+	const bwt_t *bwt;bwt12,206
+	const uint8_t *query;query13,225
+	int start,14,248
+	int start, len;14,248
+	int min_intv,15,265
+	int min_intv, max_len;15,265
+	uint64_t max_intv;16,289
+	bwtintv_v *matches;matches17,309
+	bwtintv_v *sub;sub18,372
+	bwtintv_v *tmpvec[tmpvec19,444
+smem_i *smem_itr_init(smem_itr_init22,491
+void smem_itr_destroy(37,872
+void smem_set_query(46,1108
+void smem_config(53,1232
+const bwtintv_v *smem_next(smem_next60,1393
+mem_alnreg_v mem_align1(76,1994
+static inline int get_pri_idx(90,2745
+char **mem_gen_alt(mem_gen_alt98,3059
+
+bwamem.c,2814
+static const bntseq_t *global_bns global_bns46,1407
+mem_opt_t *mem_opt_init(mem_opt_init48,1469
+#define intv_lt(90,2372
+KSORT_INIT(91,2416
+	bwtintv_v mem,94,2475
+	bwtintv_v mem, mem1,94,2475
+	bwtintv_v mem, mem1, *tmpv[tmpv94,2475
+} smem_aux_t;95,2507
+static smem_aux_t *smem_aux_init(smem_aux_init97,2522
+static void smem_aux_destroy(106,2713
+static void mem_collect_intv(114,2887
+	int64_t rbeg;169,4661
+	int32_t qbeg,170,4676
+	int32_t qbeg, len;170,4676
+	int score;171,4696
+} mem_seed_t;172,4708
+	int n,175,4760
+	int n, m,175,4760
+	int n, m, first,175,4760
+	int n, m, first, rid;175,4760
+	uint32_t w:w176,4783
+	uint32_t w:29, kept:kept176,4783
+	uint32_t w:29, kept:2, is_alt:is_alt176,4783
+	float frac_rep;177,4817
+	int64_t pos;178,4834
+	mem_seed_t *seeds;seeds179,4848
+} mem_chain_t;180,4868
+typedef struct { size_t n,182,4884
+typedef struct { size_t n, m;182,4884
+typedef struct { size_t n, m; mem_chain_t *a;a182,4884
+typedef struct { size_t n, m; mem_chain_t *a;  } mem_chain_v;182,4884
+#define chain_cmp(186,4968
+KBTREE_INIT(187,5036
+int mem_chain_weight(213,6146
+void mem_print_chain(234,6772
+mem_chain_v mem_chain(251,7382
+	#define traverse_func(306,9516
+	#undef traverse_func308,9622
+#define chn_beg(321,9922
+#define chn_end(322,9961
+#define flt_lt(324,10037
+KSORT_INIT(325,10074
+#define alnreg_slt2(391,12346
+#define alnreg_slt(394,12439
+KSORT_INIT(alnreg_slt392,12390
+#define alnreg_hlt(397,12625
+#define alnreg_hlt2(400,12837
+#define PATCH_MAX_R_BW 403,13051
+#define PATCH_MIN_SC_RATIO 404,13080
+int mem_sort_dedup_patch(437,15131
+typedef kvec_t(int)491,17252
+static void mem_mark_primary_se_core(493,17280
+int mem_mark_primary_se(521,18266
+#define MEM_SHORT_EXT 564,19631
+#define MEM_SHORT_LEN 565,19656
+#define MEM_HSP_COEF 567,19683
+#define MEM_MINSC_COEF 568,19709
+#define MEM_SEEDSW_COEF 569,19737
+int mem_seed_sw(571,19768
+void mem_flt_chained_seeds(598,20826
+static inline int cal_max_gap(621,21714
+#define MAX_BAND_TRY 630,22029
+void mem_chain2aln(632,22054
+static inline int infer_bw(792,29839
+static inline int get_rlen(801,30161
+static inline void add_cigar(812,30363
+void mem_aln2sam(825,30858
+int mem_approx_mapq_se(955,36372
+void mem_reorder_primary5(981,37346
+void mem_reg2sam(1006,38355
+mem_alnreg_v mem_align1_core(1054,40213
+mem_aln_t mem_reg2aln(1092,41536
+	const mem_opt_t *opt;opt1165,44517
+	const bwt_t *bwt;bwt1166,44540
+	const bntseq_t *bns;bns1167,44559
+	const uint8_t *pac;pac1168,44581
+	const mem_pestat_t *pes;pes1169,44602
+	smem_aux_t **aux;aux1170,44628
+	bseq1_t *seqs;seqs1171,44647
+	mem_alnreg_v *regs;regs1172,44663
+	int64_t n_processed;1173,44684
+} worker_t;1174,44706
+static void worker1(1176,44719
+static void worker2(1190,45494
+void mem_process_seqs(1208,46502
+
+rle.c,258
+const uint8_t rle_auxtab[rle_auxtab7,97
+int rle_insert_cached(10,283
+int rle_insert(91,2550
+void rle_split(99,2766
+void rle_count(109,3037
+void rle_print(120,3236
+void rle_rank2a(134,3579
+#define move_backward(163,4233
+#undef move_backward189,4795
+
+bwtaln.c,433
+gap_opt_t *gap_init_opt(gap_init_opt24,371
+int bwa_cal_maxdiff(42,926
+int bwt_cal_width(57,1232
+void bwa_cal_sa_reg_gap(83,1751
+	int tid;130,3749
+	bwt_t *bwt;bwt131,3759
+	int n_seqs;132,3772
+	bwa_seq_t *seqs;seqs133,3785
+	const gap_opt_t *opt;opt134,3803
+} thread_aux_t;135,3826
+static void *worker(worker137,3843
+bwa_seqio_t *bwa_open_reads(bwa_open_reads145,4003
+void bwa_aln_core(159,4405
+int bwa_aln(230,6487
+
+bntseq.c,524
+unsigned char nst_nt4_table[nst_nt4_table47,1498
+void bns_dump(66,2392
+bntseq_t *bns_restore_core(bns_restore_core98,3335
+bntseq_t *bns_restore(bns_restore169,5493
+void bns_destroy(214,6719
+#define _set_pac(230,6992
+#define _get_pac(231,7058
+static uint8_t *add1(add1233,7117
+int64_t bns_fasta2bntseq(281,8501
+int bwa_fa2pac(336,10165
+int bns_pos2rid(355,10601
+int bns_intv2rid(371,11024
+int bns_cnt_ambi(381,11358
+uint8_t *bns_get_seq(bns_get_seq404,12115
+uint8_t *bns_fetch_seq(bns_fetch_seq427,12860
+
+kbtree.h,1042
+#define __AC_KBTREE_H29,1433
+	int32_t is_internal:is_internal40,1596
+	int32_t is_internal:1, n:n40,1596
+} kbnode_t;41,1626
+#define	__KB_KEY(43,1639
+#define __KB_PTR(44,1689
+#define __KB_TREE_T(46,1755
+#define __KB_INIT(54,1952
+#define __kb_destroy(72,2675
+#define __kb_get_first(96,3501
+#define __KB_GET_AUX0(103,3700
+#define __KB_GET_AUX1(117,4270
+#define __KB_GET(133,4923
+#define __KB_INTERVAL(151,5567
+#define __KB_PUT(174,6487
+#define __KB_DEL(231,8916
+	kbnode_t *x;x332,13897
+	int i;333,13911
+} __kbstack_t;334,13919
+#define __kb_traverse(336,13935
+#define KBTREE_INIT(360,14902
+#define KB_DEFAULT_SIZE 369,15166
+#define kbtree_t(371,15195
+#define kb_init(372,15236
+#define kb_destroy(373,15279
+#define kb_get(374,15323
+#define kb_put(375,15370
+#define kb_del(376,15417
+#define kb_interval(377,15464
+#define kb_getp(378,15533
+#define kb_putp(379,15582
+#define kb_delp(380,15631
+#define kb_intervalp(381,15680
+#define kb_size(383,15752
+#define kb_generic_cmp(385,15786
+#define kb_str_cmp(386,15843
+
+bwtgap.h,715
+#define BWTGAP_H_2,18
+	uint32_t info;8,111
+	uint32_t n_mm:n_mm9,144
+	uint32_t n_mm:8, n_gapo:n_gapo9,144
+	uint32_t n_mm:8, n_gapo:8, n_gape:n_gape9,144
+	uint32_t n_mm:8, n_gapo:8, n_gape:8, state:state9,144
+	uint32_t n_mm:8, n_gapo:8, n_gape:8, state:2, n_seed_mm:n_seed_mm9,144
+	uint32_t n_ins:n_ins10,204
+	uint32_t n_ins:16, n_del:n_del10,204
+	int last_diff_pos;11,234
+	bwtint_t k,12,254
+	bwtint_t k, l;12,254
+} gap_entry_t;13,307
+	int n_entries,16,340
+	int n_entries, m_entries;16,340
+	gap_entry_t *stack;stack17,367
+} gap_stack1_t;18,388
+	int n_stacks,21,422
+	int n_stacks, best,21,422
+	int n_stacks, best, n_entries;21,422
+	gap_stack1_t *stacks;stacks22,454
+} gap_stack_t;23,477
+
+QSufSort.c,359
+#define min(37,1289
+#define med3(38,1370
+#define swap(39,1457
+void QSufSortSuffixSort(56,2691
+void QSufSortGenerateSaFromInverse(101,4082
+static void QSufSortSortSplit(113,4594
+static qsint_t QSufSortChoosePivot(194,6197
+static void QSufSortInsertSortSplit(227,7151
+static void QSufSortBucketSort(288,8719
+static qsint_t QSufSortTransform(344,10421
+
+ksw.h,314
+#define __AC_KSW_H2,19
+#define KSW_XBYTE 6,60
+#define KSW_XSTOP 7,87
+#define KSW_XSUBO 8,114
+#define KSW_XSTART 9,141
+typedef struct _kswq_t kswq_t;12,185
+	int score;15,234
+	int te,16,260
+	int te, qe;16,260
+	int score2,17,301
+	int score2, te2;17,301
+	int tb,18,374
+	int tb, qb;18,374
+} kswr_t;19,419
+
+malloc_wrap.c,190
+#  undef USE_MALLOC_WRAPPERS7,132
+void *wrap_calloc(wrap_calloc11,194
+void *wrap_malloc(wrap_malloc23,524
+void *wrap_realloc(wrap_realloc35,825
+char *wrap_strdup(wrap_strdup47,1145
+
+QSufSort.h,150
+#define __QSUFSORT_H__30,1164
+#define KEY(34,1209
+#define INSERT_SORT_NUM_ITEM	35,1255
+typedef int64_t qsint_t;37,1288
+#define QSINT_MAX 38,1313
+
+generateREF.c,15
+int main(5,77
+
+generateREAD.c,15
+int main(5,77
+
+main.c,74
+#define PACKAGE_VERSION 7,104
+static int usage(30,775
+int main(61,2518
+
+bwaseqio.c,520
+static char bam_nt16_nt4_table[bam_nt16_nt4_table15,241
+struct __bwa_seqio_t 17,329
+	int is_bam,19,370
+	int is_bam, which;19,370
+	bamFile fp;20,433
+	kseq_t *ks;ks22,466
+bwa_seqio_t *bwa_bam_open(bwa_bam_open25,483
+bwa_seqio_t *bwa_seq_open(bwa_seq_open39,823
+void bwa_seq_close(49,1012
+void seq_reverse(61,1245
+int bwa_trim_read(80,1670
+static bwa_seq_t *bwa_read_bam(bwa_read_bam93,2014
+#define BARCODE_LOW_QUAL 149,3851
+bwa_seq_t *bwa_read_seq(bwa_read_seq151,3880
+void bwa_free_read_seq(223,6515
+
+kthread.c,818
+	struct kt_for_t *t;t13,161
+	long i;14,182
+} ktf_worker_t;15,191
+typedef struct kt_for_t 17,208
+	int n_threads;18,234
+	long n;19,250
+	ktf_worker_t *w;w20,259
+	void (*func)func21,277
+	void *data;data22,308
+} kt_for_t;23,321
+static inline long steal_work(25,334
+static void *ktf_worker(ktf_worker35,598
+void kt_for(49,921
+	struct ktp_t *pl;pl70,1523
+	int64_t index;71,1542
+	int step;72,1558
+	void *data;data73,1569
+} ktp_worker_t;74,1582
+typedef struct ktp_t 76,1599
+	void *shared;shared77,1622
+	void *(*func)func78,1637
+	int64_t index;79,1672
+	int n_workers,80,1688
+	int n_workers, n_steps;80,1688
+	ktp_worker_t *workers;workers81,1713
+	pthread_mutex_t mutex;82,1737
+	pthread_cond_t cv;83,1761
+} ktp_t;84,1781
+static void *ktp_worker(ktp_worker86,1791
+void kt_pipeline(119,2896
+
+utils.c,668
+#define FSYNC_ON_FLUSH27,1190
+#define pair64_lt(45,1511
+KSORT_INIT(46,1588
+FILE *err_xreopen_core(err_xreopen_core67,2075
+gzFile err_xzopen_core(75,2286
+void err_fatal(90,2754
+void err_fatal_core(101,2978
+void _err_fatal_simple(112,3203
+void _err_fatal_simple_core(118,3329
+size_t err_fwrite(124,3456
+size_t err_fread_noeof(132,3666
+int err_gzread(142,3922
+int err_fseek(156,4190
+long err_ftell(166,4371
+int err_printf(176,4514
+int err_fprintf(188,4775
+int err_fputc(200,5043
+int err_fputs(211,5195
+int err_puts(222,5356
+int err_fflush(233,5492
+int err_fclose(260,6299
+int err_gzclose(267,6435
+double cputime(282,6648
+double realtime(289,6815
+
+bwase.h,21
+#define BWASE_H2,16
+
+bwtsw2.h,2117
+#define LH3_BWTSW2_H2,21
+#define BSW2_FLAG_MATESW 9,123
+#define BSW2_FLAG_TANDEM 10,155
+#define BSW2_FLAG_MOVED 11,187
+#define BSW2_FLAG_RESCUED 12,219
+	int skip_sw:skip_sw15,269
+	int skip_sw:8, cpy_cmt:cpy_cmt15,269
+	int skip_sw:8, cpy_cmt:8, hard_clip:hard_clip15,269
+	int a,16,310
+	int a, b,16,310
+	int a, b, q,16,310
+	int a, b, q, r,16,310
+	int a, b, q, r, t,16,310
+	int a, b, q, r, t, qr,16,310
+	int a, b, q, r, t, qr, bw,16,310
+	int a, b, q, r, t, qr, bw, max_ins,16,310
+	int a, b, q, r, t, qr, bw, max_ins, max_chain_gap;16,310
+	int z,17,362
+	int z, is,17,362
+	int z, is, t_seeds,17,362
+	int z, is, t_seeds, multi_2nd;17,362
+	float mask_level,18,394
+	float mask_level, coef;18,394
+	int n_threads,19,419
+	int n_threads, chunk_size;19,419
+} bsw2opt_t;20,447
+	bwtint_t k,23,478
+	bwtint_t k, l;23,478
+	uint32_t flag:flag24,494
+	uint32_t flag:18, n_seeds:n_seeds24,494
+	uint32_t flag:18, n_seeds:13, is_rev:is_rev24,494
+	int len,25,535
+	int len, G,25,535
+	int len, G, G2;25,535
+	int beg,26,552
+	int beg, end;26,552
+} bsw2hit_t;27,567
+	int flag,30,598
+	int flag, nn,30,598
+	int flag, nn, n_cigar,30,598
+	int flag, nn, n_cigar, chr,30,598
+	int flag, nn, n_cigar, chr, pos,30,598
+	int flag, nn, n_cigar, chr, pos, qual,30,598
+	int flag, nn, n_cigar, chr, pos, qual, mchr,30,598
+	int flag, nn, n_cigar, chr, pos, qual, mchr, mpos,30,598
+	int flag, nn, n_cigar, chr, pos, qual, mchr, mpos, pqual,30,598
+	int flag, nn, n_cigar, chr, pos, qual, mchr, mpos, pqual, isize,30,598
+	int flag, nn, n_cigar, chr, pos, qual, mchr, mpos, pqual, isize, nm;30,598
+	uint32_t *cigar;cigar31,668
+} bsw2aux_t;32,686
+	int n,35,717
+	int n, max;35,717
+	bsw2hit_t *hits;hits36,730
+	bsw2aux_t *aux;aux37,748
+} bwtsw2_t;38,765
+	void *stack;stack41,795
+	int max_l;42,809
+	uint8_t *aln_mem;aln_mem43,821
+} bsw2global_t;44,840
+	int l,47,874
+	int l, tid;47,874
+	char *name,name48,887
+	char *name, *seq,seq48,887
+	char *name, *seq, *qual,qual48,887
+	char *name, *seq, *qual, *sam,sam48,887
+	char *name, *seq, *qual, *sam, *comment;comment48,887
+} bsw2seq1_t;49,929
