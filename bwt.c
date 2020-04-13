@@ -35,6 +35,7 @@
 #include "bwt.h"
 #include "kvec.h"
 #include <nmmintrin.h>
+#include <xmmintrin.h>
 
 #ifdef USE_MALLOC_WRAPPERS
 #  include "malloc_wrap.h"
@@ -208,13 +209,13 @@ void bwt_occ4(const bwt_t *bwt, bwtint_t k, bwtint_t cnt[4])
 	x += __occ_aux4(bwt, tmp) - (~k&15);
 	cnt[0] += x&0xff; cnt[1] += x>>8&0xff; cnt[2] += x>>16&0xff; cnt[3] += x>>24;
 }
- void bwt_occ4_lambert(const bwt_t *bwt, bwtint_t k, bwtint_t cntk[4]){
-   // k=k-(k>=bwt->primary);
+void inline bwt_occ4_lambert(const bwt_t *bwt, bwtint_t k, bwtint_t cntk[4]){
   bwtint_t *line=((bwtint_t *)bwt->bwt)+k/64*8;
   bwtint_t rshift=63-k%64;
-  for(int i=0;i<4;i++){
-    cntk[i]=line[i]+_mm_popcnt_u64(line[i+4]>>rshift);
-  }
+  cntk[0]=line[0]+_mm_popcnt_u64(line[0+4]>>rshift);
+  cntk[1]=line[1]+_mm_popcnt_u64(line[1+4]>>rshift);
+  cntk[2]=line[2]+_mm_popcnt_u64(line[2+4]>>rshift);
+  cntk[3]=line[3]+_mm_popcnt_u64(line[3+4]>>rshift);
 }
 
 
@@ -291,23 +292,49 @@ int bwt_match_exact_alt(const bwt_t *bwt, int len, const ubyte_t *str, bwtint_t 
 /*********************
  * Bidirectional BWT *
  *********************/
-
 void bwt_extend(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
 {
-	bwtint_t tk[4], tl[4];
-	int i;
-	//bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);
-	bwt_occ4_lambert(bwt,ik->x[!is_back] - 1, tk);
-	bwt_occ4_lambert(bwt, ik->x[!is_back] - 1 + ik->x[2], tl);
-	for (i = 0; i != 4; ++i) {
-		ok[i].x[!is_back] = bwt->L2[i] + 1 + tk[i];
-		ok[i].x[2] = tl[i] - tk[i];
-	}
-	ok[3].x[is_back] = ik->x[is_back] + (ik->x[!is_back] <= bwt->primary && ik->x[!is_back] + ik->x[2] - 1 >= bwt->primary);
-	ok[2].x[is_back] = ok[3].x[is_back] + ok[3].x[2];
-	ok[1].x[is_back] = ok[2].x[is_back] + ok[2].x[2];
-	ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
+        bwtint_t tk[4], tl[4];
+	//bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);                            
+        bwt_occ4_lambert(bwt,ik->x[!is_back] - 1, tk);
+        bwt_occ4_lambert(bwt, ik->x[!is_back] - 1 + ik->x[2], tl);
+        ok[0].x[!is_back] = bwt->L2[0] + 1 + tk[0];
+        ok[0].x[2] = tl[0] - tk[0];
+	ok[1].x[!is_back] = bwt->L2[1] + 1 + tk[1];
+        ok[1].x[2] = tl[1] - tk[1];
+        ok[2].x[!is_back] = bwt->L2[2] + 1 + tk[2];
+        ok[2].x[2] = tl[2] - tk[2];
+        ok[3].x[!is_back] = bwt->L2[3] + 1 + tk[3];
+        ok[3].x[2] = tl[3] - tk[3];
+
+	ok[3].x[is_back] = ik->x[is_back] + (ik->x[!is_back] <= bwt->primary && ik->x[!is_back] + ik->x[2] - 1 >=bwt->primary);
+        ok[2].x[is_back] = ok[3].x[is_back] + ok[3].x[2];
+        ok[1].x[is_back] = ok[2].x[is_back] + ok[2].x[2];
+        ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
 }
+
+void inline bwt_extend_lambert(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
+{
+        bwtint_t tk[4], tl[4];
+	//bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);                            
+        bwt_occ4_lambert(bwt,ik->x[!is_back] - 1, tk);
+        bwt_occ4_lambert(bwt, ik->x[!is_back] - 1 + ik->x[2], tl);
+        ok[0].x[!is_back] = bwt->L2[0] + 1 + tk[0];
+        ok[0].x[2] = tl[0] - tk[0];
+	ok[1].x[!is_back] = bwt->L2[1] + 1 + tk[1];
+        ok[1].x[2] = tl[1] - tk[1];
+        ok[2].x[!is_back] = bwt->L2[2] + 1 + tk[2];
+        ok[2].x[2] = tl[2] - tk[2];
+        ok[3].x[!is_back] = bwt->L2[3] + 1 + tk[3];
+        ok[3].x[2] = tl[3] - tk[3];
+
+	ok[3].x[is_back] = ik->x[is_back] + (ik->x[!is_back] <= bwt->primary && ik->x[!is_back] + ik->x[2] - 1 >=bwt->primary);
+        ok[2].x[is_back] = ok[3].x[is_back] + ok[3].x[2];
+        ok[1].x[is_back] = ok[2].x[is_back] + ok[2].x[2];
+        ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
+}
+
+
 
 static void bwt_reverse_intvs(bwtintv_v *p)
 {
@@ -342,7 +369,9 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 			break;
 		} else if (q[i] < 4) { // an A/C/G/T base
 			c = 3 - q[i]; // complement of q[i]
-			bwt_extend(bwt, &ik, ok, 0);
+			bwt_extend_lambert(bwt, &ik, ok, 0);
+			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(ok[c].x[1]-1)/64*8),2);
+			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(ok[c].x[1]-1+ok[c].x[2])/64*8),2);
 			if (ok[c].x[2] != ik.x[2]) { // change of the interval size
 				kv_push(bwtintv_t, *curr, ik);
 				if (ok[c].x[2] < min_intv) break; // the interval size is too small to be extended further
@@ -362,7 +391,9 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
 		for (j = 0, curr->n = 0; j < prev->n; ++j) {
 			bwtintv_t *p = &prev->a[j];
-			if (c >= 0 && ik.x[2] >= max_intv) bwt_extend(bwt, p, ok, 1);
+			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(p->x[0]-1)/64*8),2);
+			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(p->x[0]-1+p->x[2])/64*8),2);
+			if (c >= 0 && ik.x[2] >= max_intv) bwt_extend_lambert(bwt, p, ok, 1);
 			if (c < 0 || ik.x[2] < max_intv || ok[c].x[2] < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
 				if (curr->n == 0) { // test curr->n>0 to make sure there are no longer matches
 					if (mem->n == 0 || i + 1 < mem->a[mem->n-1].info>>32) { // skip contained matches
@@ -401,7 +432,7 @@ int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int m
 	for (i = x + 1; i < len; ++i) { // forward search
 		if (q[i] < 4) { // an A/C/G/T base
 			c = 3 - q[i]; // complement of q[i]
-			bwt_extend(bwt, &ik, ok, 0);
+			bwt_extend_lambert(bwt, &ik, ok, 0);
 			if (ok[c].x[2] < max_intv && i - x >= min_len) {
 				*mem = ok[c];
 				mem->info = (uint64_t)x<<32 | (i + 1);
