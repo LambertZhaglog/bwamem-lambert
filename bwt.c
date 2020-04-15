@@ -313,7 +313,7 @@ void bwt_extend(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_b
         ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
 }
 
-void inline bwt_extend_lambert(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
+void bwt_extend_lambert(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
 {
         bwtint_t tk[4], tl[4];
 	//bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);                            
@@ -368,7 +368,6 @@ void myNB(const bwt_t *bwt, const bwtintv_t *old, bwtintv_t *new, int c){
 	new->x[1]=new->x[1]+bwt->L2[c]+1;
 	_mm_prefetch(occ+(new->x[1]-1)/64*8,2);
 	_mm_prefetch(occ+(new->x[1]-1+new->x[2])/64*8,2);
-	new->info=old->info+1;
 	sa_width[0]=sa_width[1]+sa_width[2]+sa_width[3];
 	sa_width[1]=sa_width[2]+sa_width[3];
 	sa_width[2]=sa_width[3];
@@ -408,6 +407,7 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 			tmp=p;
 			p=pp;
 			pp=tmp;
+			p->info=i+1;
 			//ik = ok[c]; ik.info = i + 1;
 		} else { // an ambiguous base
 			kv_push(bwtintv_t, *curr, *p);
@@ -457,23 +457,37 @@ int bwt_smem1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, 
 int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem)
 {
 	int i, c;
-	bwtintv_t ik, ok[4];
-
+	//bwtintv_t ik, ok[4];
 	memset(mem, 0, sizeof(bwtintv_t));
 	if (q[x] > 3) return x + 1;
-	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base
+	bwtintv_t *p, *pp, *tmp;
+	p=(bwtintv_t *)malloc(sizeof(bwtintv_t));
+	pp=(bwtintv_t *)malloc(sizeof(bwtintv_t));
+	bwt_set_intv(bwt, q[x], *p); // the initial interval of a single base
 	for (i = x + 1; i < len; ++i) { // forward search
 		if (q[i] < 4) { // an A/C/G/T base
-			c = 3 - q[i]; // complement of q[i]
-			bwt_extend_lambert(bwt, &ik, ok, 0);
-			if (ok[c].x[2] < max_intv && i - x >= min_len) {
-				*mem = ok[c];
+		  //c = 3 - q[i]; // complement of q[i]
+		  //bwt_extend_lambert(bwt, &ik, ok, 0);
+		  myNB(bwt,p,pp,3-q[i]);
+			if (pp->x[2] < max_intv && i - x >= min_len) {
+				*mem =*pp;
 				mem->info = (uint64_t)x<<32 | (i + 1);
-				return i + 1;
+				//	return i + 1;
+				len=i+1;
+				break;
 			}
-			ik = ok[c];
-		} else return i + 1;
+			//ik = ok[c];
+			tmp=p;
+			p=pp;
+			pp=tmp;
+		} else {
+		  //return i + 1;
+		  len =i+1;
+		  break;
+		}
 	}
+	free(p);
+	free(pp);
 	return len;
 }
 
