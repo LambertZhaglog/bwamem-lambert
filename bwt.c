@@ -347,6 +347,34 @@ static void bwt_reverse_intvs(bwtintv_v *p)
 		}
 	}
 }
+void myNB(const bwt_t *bwt, const bwtintv_t *old, bwtintv_t *new, int c){
+	bwtint_t sa_width[4];
+	bwtint_t * occ=((bwtint_t *)bwt->bwt);
+	bwtint_t *lineS=occ+(old->x[1]-1)/64*8;
+	bwtint_t *lineE=occ+(old->x[1]-1+old->x[2])/64*8;
+	int flag=(old->x[1]-1)<=bwt->primary && old->x[1]-1+old->x[2]>=bwt->primary;
+	bwtint_t rshiftS=63-(old->x[1]-1)%64;
+	bwtint_t rshiftE=63-(old->x[1]-1+old->x[2])%64;
+	sa_width[0]=lineS[0]+_mm_popcnt_u64(lineS[4]>>rshiftS);
+	sa_width[1]=lineS[1]+_mm_popcnt_u64(lineS[5]>>rshiftS);
+	sa_width[2]=lineS[2]+_mm_popcnt_u64(lineS[6]>>rshiftS);
+	sa_width[3]=lineS[3]+_mm_popcnt_u64(lineS[7]>>rshiftS);
+	new->x[1]=sa_width[c];	
+	sa_width[0]=lineE[0]+_mm_popcnt_u64(lineE[4]>>rshiftE)-sa_width[0];
+	sa_width[1]=lineE[1]+_mm_popcnt_u64(lineE[5]>>rshiftE)-sa_width[1];
+	sa_width[2]=lineE[2]+_mm_popcnt_u64(lineE[6]>>rshiftE)-sa_width[2];
+	sa_width[3]=lineE[3]+_mm_popcnt_u64(lineE[7]>>rshiftE)-sa_width[3];	
+	new->x[2]=sa_width[c];
+	new->x[1]=new->x[1]+bwt->L2[c]+1;
+	_mm_prefetch(occ+(new->x[1]-1)/64*8,2);
+	_mm_prefetch(occ+(new->x[1]-1+new->x[2])/64*8,2);
+	new->info=old->info+1;
+	sa_width[0]=sa_width[1]+sa_width[2]+sa_width[3];
+	sa_width[1]=sa_width[2]+sa_width[3];
+	sa_width[2]=sa_width[3];
+	sa_width[3]=0;
+	new->x[0]=sa_width[c]+old->x[0]+flag;
+}
 // NOTE: $max_intv is not currently used in BWA-MEM
 int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, uint64_t max_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
 {
@@ -360,29 +388,36 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 	kv_init(a[0]); kv_init(a[1]);
 	prev = tmpvec && tmpvec[0]? tmpvec[0] : &a[0]; // use the temporary vector if provided
 	curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
-	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base
-	ik.info = x + 1;
-
+	bwtintv_t *p, *pp,*tmp;
+	p=(bwtintv_t *)malloc(sizeof(bwtintv_t));
+	pp=(bwtintv_t *)malloc(sizeof(bwtintv_t));
+	bwt_set_intv(bwt, q[x], *p); // the initial interval of a single base
+	p->info = x + 1;
 	for (i = x + 1, curr->n = 0; i < len; ++i) { // forward search
-		if (ik.x[2] < max_intv) { // an interval small enough
-			kv_push(bwtintv_t, *curr, ik);
+		if (p->x[2] < max_intv) { // an interval small enough
+			kv_push(bwtintv_t, *curr, *p);
 			break;
 		} else if (q[i] < 4) { // an A/C/G/T base
-			c = 3 - q[i]; // complement of q[i]
-			bwt_extend_lambert(bwt, &ik, ok, 0);
-			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(ok[c].x[1]-1)/64*8),2);
-			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(ok[c].x[1]-1+ok[c].x[2])/64*8),2);
-			if (ok[c].x[2] != ik.x[2]) { // change of the interval size
-				kv_push(bwtintv_t, *curr, ik);
-				if (ok[c].x[2] < min_intv) break; // the interval size is too small to be extended further
+		  //c = 3 - q[i]; // complement of q[i]
+		  //bwt_extend_lambert(bwt, &ik, ok, 0);
+		  myNB(bwt,p,pp,3-q[i]);
+			if (pp->x[2] != p->x[2]) { // change of the interval size
+				kv_push(bwtintv_t, *curr, *p);
+				if (pp->x[2] < min_intv) break; // the interval size is too small to be extended further
 			}
-			ik = ok[c]; ik.info = i + 1;
+			tmp=p;
+			p=pp;
+			pp=tmp;
+			//ik = ok[c]; ik.info = i + 1;
 		} else { // an ambiguous base
-			kv_push(bwtintv_t, *curr, ik);
+			kv_push(bwtintv_t, *curr, *p);
 			break; // always terminate extension at an ambiguous base; in this case, i<len always stands
 		}
 	}
-	if (i == len) kv_push(bwtintv_t, *curr, ik); // push the last interval if we reach the end
+	if (i == len) kv_push(bwtintv_t, *curr, *p); // push the last interval if we reach the end
+	free(p);
+	free(pp);
+	
 	bwt_reverse_intvs(curr); // s.t. smaller intervals (i.e. longer matches) visited first
 	ret = curr->a[0].info; // this will be the returned value
 	swap = curr; curr = prev; prev = swap;
@@ -391,8 +426,6 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
 		for (j = 0, curr->n = 0; j < prev->n; ++j) {
 			bwtintv_t *p = &prev->a[j];
-			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(p->x[0]-1)/64*8),2);
-			_mm_prefetch((char *)(((bwtint_t *)bwt->bwt)+(p->x[0]-1+p->x[2])/64*8),2);
 			if (c >= 0 && ik.x[2] >= max_intv) bwt_extend_lambert(bwt, p, ok, 1);
 			if (c < 0 || ik.x[2] < max_intv || ok[c].x[2] < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
 				if (curr->n == 0) { // test curr->n>0 to make sure there are no longer matches
