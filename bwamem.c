@@ -145,15 +145,9 @@ static void mem_collect_intv(const mem_opt_t *opt, const bwt_t *bwt, int len, co
 		x = 0;
 		while (x < len) {
 			if (seq[x] < 4) {
-				if (1) {
-					bwtintv_t m;
-					x = bwt_seed_strategy1(bwt, len, seq, x, opt->min_seed_len, opt->max_mem_intv, &m);
-					if (m.x[2] > 0) kv_push(bwtintv_t, a->mem, m);
-				} else { // for now, we never come to this block which is slower
-					x = bwt_smem1a(bwt, len, seq, x, start_width, opt->max_mem_intv, &a->mem1, a->tmpv);
-					for (i = 0; i < a->mem1.n; ++i)
-						kv_push(bwtintv_t, a->mem, a->mem1.a[i]);
-				}
+			  bwtintv_t m;
+			  x = bwt_seed_strategy1(bwt, len, seq, x, opt->min_seed_len, opt->max_mem_intv, &m);
+			  if (m.x[2] > 0) kv_push(bwtintv_t, a->mem, m);
 			} else ++x;
 		}
 	}

@@ -314,29 +314,6 @@ void bwt_extend(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_b
   ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
 }
 
-void bwt_extend_lambert(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
-{
-  bwtint_t tk[4], tl[4];
-  //bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);                            
-  bwt_occ4_lambert(bwt,ik->x[!is_back] - 1, tk);
-  bwt_occ4_lambert(bwt, ik->x[!is_back] - 1 + ik->x[2], tl);
-  ok[0].x[!is_back] = bwt->L2[0] + 1 + tk[0];
-  ok[0].x[2] = tl[0] - tk[0];
-  ok[1].x[!is_back] = bwt->L2[1] + 1 + tk[1];
-  ok[1].x[2] = tl[1] - tk[1];
-  ok[2].x[!is_back] = bwt->L2[2] + 1 + tk[2];
-  ok[2].x[2] = tl[2] - tk[2];
-  ok[3].x[!is_back] = bwt->L2[3] + 1 + tk[3];
-  ok[3].x[2] = tl[3] - tk[3];
-
-  ok[3].x[is_back] = ik->x[is_back] + (ik->x[!is_back] <= bwt->primary && ik->x[!is_back] + ik->x[2] - 1 >=bwt->primary);
-  ok[2].x[is_back] = ok[3].x[is_back] + ok[3].x[2];
-  ok[1].x[is_back] = ok[2].x[is_back] + ok[2].x[2];
-  ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
-}
-
-
-
 static void bwt_reverse_intvs(bwtintv_v *p)
 {
   if (p->n > 1) {
@@ -348,7 +325,8 @@ static void bwt_reverse_intvs(bwtintv_v *p)
     }
   }
 }
-void BF(const bwtint_t *lineS, const bwtint_t *lineE, const bwtint_t rshiftS, const bwtint_t rshiftE, bwtint_t store[4][4]){
+
+void inline BF(const bwtint_t *lineS, const bwtint_t *lineE, const bwtint_t rshiftS, const bwtint_t rshiftE, bwtint_t store[4][4]){
 //store[0]-->x0(FS), store[1]-->x1(RS), store[2]-->x2(LEN), store[3]-->L2
 //store[0][3] = ik->x[is_back]+flag; has set already.
     store[2][3]=lineE[3]+_mm_popcnt_u64(lineE[7]>>rshiftE)-(store[1][3]=lineS[3]+_mm_popcnt_u64(lineS[7]>>rshiftS));
@@ -363,14 +341,13 @@ void BF(const bwtint_t *lineS, const bwtint_t *lineE, const bwtint_t rshiftS, co
     store[2][0]=lineE[0]+_mm_popcnt_u64(lineE[4]>>rshiftE)-(store[1][0]=lineS[0]+_mm_popcnt_u64(lineS[4]>>rshiftS));
     store[1][0]+=store[3][0];
 }
-// NOTE: $max_intv is not currently used in BWA-MEM
-int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, uint64_t max_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
+int bwt_smem1b(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
 {
 	int i, j, c, ret;
-	bwtintv_t ik,jk; // 我要存储的是kv_push的结果
+	bwtintv_t ik, jk; // 我要存储的是kv_push的结果
 	bwtintv_v a[2], *prev, *curr, *swap;
-	bwtint_t store[4][4];
-	
+	bwtint_t store[4][4],tmp,tmp2;
+
 	mem->n = 0;
 	if (q[x] > 3) return x + 1;
 	if (min_intv < 1) min_intv = 1; // the interval size should be at least 1
@@ -379,15 +356,134 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 	curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
 	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base，把碱基q[x]对应的interval存储在ik中。
 	ik.info = x + 1;
-  store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
-  store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
-  bwtint_t *occ=(bwtint_t *)(bwt->bwt);
-  bwtint_t *lineS=occ+(ik.x[1]-1)/64*8;
-      _mm_prefetch(lineS, 1);
-  bwtint_t rshiftS=63-(ik.x[1]-1)%64;
-  bwtint_t *lineE=occ+(ik.x[1]-1+ik.x[2])/64*8;
-      _mm_prefetch(lineE, 1);
-  bwtint_t rshiftE=63-(ik.x[1]-1+ik.x[2])%64;
+	store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
+	store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
+	bwtint_t *occ=(bwtint_t *)(bwt->bwt);
+	bwtint_t *lineS=occ+(tmp=ik.x[1]-1)/64*8;
+	bwtint_t rshiftS=63-tmp%64;
+	bwtint_t *lineE=occ+(tmp=tmp+ik.x[2])/64*8;
+	bwtint_t rshiftE=63-tmp%64;
+	_mm_prefetch(lineS, _MM_HINT_T1);
+	_mm_prefetch(lineE, _MM_HINT_T1);
+
+	for (i = x + 1, curr->n = 0; ((i == len)+((c = 3 - q[i])<0))==0; ++i) { // forward search
+	  BF(lineS, lineE, rshiftS, rshiftE, store);
+	  lineS=occ+(tmp=store[1][c]-1)/64*8;
+	  rshiftS=63-tmp%64;
+	  lineE=occ+(tmp=tmp+store[2][c])/64*8;
+	  rshiftE=63-tmp%64;
+	  _mm_prefetch(lineS, _MM_HINT_T1);
+	  _mm_prefetch(lineE, _MM_HINT_T1);
+	  tmp2=store[0][c];
+	  store[0][3]=tmp2+((store[1][c]<=bwt->primary)&&(tmp>=bwt->primary));
+	  tmp=store[2][c];
+	  if (tmp != ik.x[2]) { // change of the interval size
+	    kv_push(bwtintv_t, *curr, ik);
+	    if (tmp < min_intv) break; // the interval size is too small to be extended further
+	  }
+	  ik.x[0]=tmp2;ik.x[1]=store[1][c];ik.x[2]=tmp; ik.info = i + 1;
+	}
+	if (((i == len) + (c<0))>0 ) kv_push(bwtintv_t, *curr, ik); // push the last interval if we reach the end
+	
+	bwt_reverse_intvs(curr); // s.t. smaller intervals (i.e. longer matches) visited first
+	ret = curr->a[0].info; // this will be the returned value
+	
+	i=x;
+	do { // backward search for MEMs
+		swap = curr; curr = prev; prev = swap;
+		curr->n = 0;
+		i--;
+		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
+		if(c<0){
+			ik=prev->a[0]; ik.info |= (uint64_t)(i + 1)<<32;
+			kv_push(bwtintv_t, *mem, ik);
+		}else{
+			for (j = 0; j < prev->n; ++j) {
+				bwtintv_t *p = &prev->a[j];
+	  lineS=occ+(tmp=p->x[0]-1)/64*8;
+	  rshiftS=63-tmp%64;
+	  lineE=occ+(tmp=tmp+p->x[2])/64*8;
+	  rshiftE=63-tmp%64;
+	  store[0][3]=p->x[1]+((p->x[0]<=bwt->primary)&&(tmp>=bwt->primary));
+	  BF(lineS, lineE, rshiftS, rshiftE, store);
+	  tmp2=store[2][c];
+				if (tmp2 < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
+					if (mem->n == 0 || i + 1 < mem->a[mem->n-1].info>>32) { // skip contained matches
+						ik = *p; ik.info |= (uint64_t)(i + 1)<<32;
+						kv_push(bwtintv_t, *mem, ik);
+					}
+					 // otherwise the match is contained in another longer match
+				} else if (curr->n == 0 || tmp2 != curr->a[curr->n-1].x[2]) {
+					jk.info = p->info;
+					jk.x[0]=store[1][c];jk.x[1]=store[0][c];jk.x[2]=tmp2;
+					kv_push(bwtintv_t, *curr, jk);
+				}
+			}
+		}
+	}while(curr->n>0);
+	bwt_reverse_intvs(mem); // s.t. sorted by the start coordinate
+
+	if (tmpvec == 0 || tmpvec[0] == 0) free(a[0].a);
+	if (tmpvec == 0 || tmpvec[1] == 0) free(a[1].a);
+	return ret;
+}
+
+int bwt_smem1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
+{
+	return bwt_smem1b(bwt, len, q, x, min_intv, mem, tmpvec);
+}
+
+int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem)
+{
+	int i, c;
+	bwtintv_t ik;
+	bwtint_t store[4][4],tmp,tmp2;
+
+	memset(mem, 0, sizeof(bwtintv_t));
+	if (q[x] > 3) return x + 1;
+	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base
+	store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
+	store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
+	bwtint_t *occ=(bwtint_t *)(bwt->bwt);
+	bwtint_t *lineS=occ+(tmp=ik.x[1]-1)/64*8;
+	bwtint_t rshiftS=63-tmp%64;
+	bwtint_t *lineE=occ+(tmp=tmp+ik.x[2])/64*8;
+	bwtint_t rshiftE=63-tmp%64;
+	_mm_prefetch(lineS, _MM_HINT_T1);
+	_mm_prefetch(lineE, _MM_HINT_T1);
+	min_len+=x;
+	for (i = x + 1; ((i < len)+((c = 3 - q[i])>=0))==2; ++i) { // forward search
+	  BF(lineS, lineE, rshiftS, rshiftE, store);
+	  lineS=occ+(tmp=store[1][c]-1)/64*8;
+	  rshiftS=63-tmp%64;
+	  lineE=occ+(tmp=tmp+store[2][c])/64*8;
+	  rshiftE=63-tmp%64;
+	  _mm_prefetch(lineS, _MM_HINT_T1);
+	  _mm_prefetch(lineE, _MM_HINT_T1);
+	  tmp2=store[0][c];
+	  store[0][3]=tmp2+((store[1][c]<=bwt->primary)&&(tmp>=bwt->primary));
+	  if ((store[2][c] < max_intv) && (i>= min_len)) {
+	    mem->x[0]=tmp2; mem->x[1]=store[1][c];mem->x[2]=store[2][c];
+	    mem->info = (uint64_t)x<<32 | (i + 1);
+	    break;
+	  }
+	}
+	return len>(i+1)?(i+1):len;
+}
+int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, uint64_t max_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
+{
+	int i, j, c, ret;
+	bwtintv_t ik, ok[4]; // 我要存储的是kv_push的结果
+	bwtintv_v a[2], *prev, *curr, *swap;
+
+	mem->n = 0;
+	if (q[x] > 3) return x + 1;
+	if (min_intv < 1) min_intv = 1; // the interval size should be at least 1
+	kv_init(a[0]); kv_init(a[1]);
+	prev = tmpvec && tmpvec[0]? tmpvec[0] : &a[0]; // use the temporary vector if provided
+	curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
+	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base，把碱基q[x]对应的interval存储在ik中。
+	ik.info = x + 1;
 
 	for (i = x + 1, curr->n = 0; i < len; ++i) { // forward search
 		if (ik.x[2] < max_intv) { // an interval small enough
@@ -395,20 +491,12 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 			break;
 		} else if (q[i] < 4) { // an A/C/G/T base
 			c = 3 - q[i]; // complement of q[i], 因为是forward extention，所以用互补碱基
-      BF(lineS,lineE,rshiftS,rshiftE,store);
-      lineS=occ+(store[1][c]-1)/64*8;
-      _mm_prefetch(lineS, 1);
-      lineE=occ+(store[1][c]-1+store[2][c])/64*8;
-      _mm_prefetch(lineE, 1);
-      rshiftS=63-(store[1][c]-1)%64;
-      rshiftE=63-(store[1][c]-1+store[2][c])%64;
-			if (store[2][c] != ik.x[2]) { // change of the interval size
+			bwt_extend(bwt, &ik, ok, 0);
+			if (ok[c].x[2] != ik.x[2]) { // change of the interval size
 				kv_push(bwtintv_t, *curr, ik);
-				if (store[2][c] < min_intv) break; // the interval size is too small to be extended further
+				if (ok[c].x[2] < min_intv) break; // the interval size is too small to be extended further
 			}
-      ik.x[0]=store[0][c]; ik.x[1]=store[1][c]; ik.x[2]=store[2][c];
-      store[0][3]=store[0][c]+((store[1][c]<=bwt->primary)&&((store[1][c]+store[2][c]-1)>=bwt->primary));
-		        ik.info = i + 1;
+			ik = ok[c]; ik.info = i + 1;
 		} else { // an ambiguous base
 			kv_push(bwtintv_t, *curr, ik);
 			break; // always terminate extension at an ambiguous base; in this case, i<len always stands
@@ -421,44 +509,20 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 
 	for (i = x - 1; i >= -1; --i) { // backward search for MEMs
 		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
-		bwtintv_t *pp=NULL;
-		if(prev->n>0){
-		  pp=&prev->a[0];
-		  lineS=occ+(pp->x[0]-1)/64*8;
-		  _mm_prefetch(lineS,1);
-		  rshiftS=63-(pp->x[0]-1)%64;
-		  lineE=occ+(pp->x[0]-1+pp->x[2])/64*8;
-		  _mm_prefetch(lineE,1);
-		  rshiftE=63-(pp->x[0]-1+pp->x[2])%64;
-		  store[0][3]=pp->x[1]+((pp->x[0]<=bwt->primary)&&((pp->x[0]+pp->x[2]-1)>=bwt->primary));
-		}
 		for (j = 0, curr->n = 0; j < prev->n; ++j) {
-			bwtintv_t *p = pp;
-			if (c >= 0 && ik.x[2] >= max_intv){
-			  BF(lineS, lineE, rshiftS, rshiftE, store);
-			}
-			if(j+1<prev->n){
-			  pp=&prev->a[j+1];
-		  lineS=occ+(pp->x[0]-1)/64*8;
-		  _mm_prefetch(lineS,1);
-		  rshiftS=63-(pp->x[0]-1)%64;
-		  lineE=occ+(pp->x[0]-1+pp->x[2])/64*8;
-		  _mm_prefetch(lineE,1);
-		  rshiftE=63-(pp->x[0]-1+pp->x[2])%64;
-			}
-			if (c < 0 || ik.x[2] < max_intv || store[2][c] < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
+			bwtintv_t *p = &prev->a[j];
+			if (c >= 0 && ik.x[2] >= max_intv) bwt_extend(bwt, p, ok, 1);
+			if (c < 0 || ik.x[2] < max_intv || ok[c].x[2] < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
 				if (curr->n == 0) { // test curr->n>0 to make sure there are no longer matches
 					if (mem->n == 0 || i + 1 < mem->a[mem->n-1].info>>32) { // skip contained matches
 						ik = *p; ik.info |= (uint64_t)(i + 1)<<32;
 						kv_push(bwtintv_t, *mem, ik);
 					}
 				} // otherwise the match is contained in another longer match
-			} else if (curr->n == 0 || store[2][c] != curr->a[curr->n-1].x[2]) {
-				jk.info = p->info;
-				jk.x[0]=store[1][c];jk.x[1]=store[0][c];jk.x[2]=store[2][c];
-				kv_push(bwtintv_t, *curr, jk);
+			} else if (curr->n == 0 || ok[c].x[2] != curr->a[curr->n-1].x[2]) {
+				ok[c].info = p->info;
+				kv_push(bwtintv_t, *curr, ok[c]);
 			}
-			if(j+1<prev->n) store[0][3]=pp->x[1]+((pp->x[0]<=bwt->primary)&&((pp->x[0]+pp->x[2]-1)>=bwt->primary));
 		}
 		if (curr->n == 0) break;
 		swap = curr; curr = prev; prev = swap;
@@ -470,48 +534,6 @@ int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv,
 	return ret;
 }
 
-int bwt_smem1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
-{
-  return bwt_smem1a(bwt, len, q, x, min_intv, 0, mem, tmpvec);
-}
-
-int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem){
-  int i,c;
-  bwtintv_t ik;
-  bwtint_t store[4][4];
-  memset(mem,0,sizeof(bwtintv_t));
-  if(q[x]>3) return x+1;
-  bwt_set_intv(bwt, q[x], ik);
-  store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
-  store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
-  bwtint_t *occ=(bwtint_t *)(bwt->bwt);
-  bwtint_t *lineS=occ+(ik.x[1]-1)/64*8;
-      _mm_prefetch(lineS, 1);
-  bwtint_t rshiftS=63-(ik.x[1]-1)%64;
-  bwtint_t *lineE=occ+(ik.x[1]-1+ik.x[2])/64*8;
-      _mm_prefetch(lineE, 1);
-  bwtint_t rshiftE=63-(ik.x[1]-1+ik.x[2])%64;
-  for(i=x+1;i<len;i++){
-    if(q[i]<4){
-      c=3-q[i];
-      BF(lineS,lineE,rshiftS,rshiftE,store);
-      lineS=occ+(store[1][c]-1)/64*8;
-      _mm_prefetch(lineS, 1);
-      lineE=occ+(store[1][c]-1+store[2][c])/64*8;
-      _mm_prefetch(lineE, 1);
-      rshiftS=63-(store[1][c]-1)%64;
-      rshiftE=63-(store[1][c]-1+store[2][c])%64;
-      ik.x[0]=store[0][c]; ik.x[1]=store[1][c]; ik.x[2]=store[2][c];
-      store[0][3]=store[0][c]+((store[1][c]<=bwt->primary)&&((store[1][c]+store[2][c]-1)>=bwt->primary));
-      if(store[2][c]<max_intv&&i-x>=min_len){
-	*mem=ik;
-	mem->info=(uint64_t)x<<32|(i+1);
-	return i+1;
-      }
-    }else return i+1;
-  }
-  return len;
-}
 /*************************
  * Read/write BWT and SA *
  *************************/
