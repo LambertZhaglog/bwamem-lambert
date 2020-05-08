@@ -653,7 +653,7 @@ void bwt_update_bwt_lambert(bwt_t *bwt){
       cnt[c]++;
       occ[c]=occ[c]+(1ll<<(63-(i%64)));
     }
-    if(i%64==63){
+    if(i%64==63||i==bwt->seq_len){
       bwtint_t k=i/64*8;
       for(int ii=0;ii<4;ii++){
 	array[k+4+ii]=occ[ii];
