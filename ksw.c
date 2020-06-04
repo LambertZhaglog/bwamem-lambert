@@ -376,8 +376,8 @@ kswr_t ksw_align(int qlen, uint8_t *query, int tlen, uint8_t *target, int m, con
 typedef struct {
 	int32_t h, e;
 } eh_t;
-
-int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off)
+/* ksw_extend2 original code */
+int ksw_extend21(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off)
 {
 	eh_t *eh; // score array
 	int8_t *qp; // query profile
@@ -476,6 +476,86 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
 	if (_gscore) *_gscore = gscore;
 	if (_max_off) *_max_off = max_off;
 	return max;
+}
+
+static inline int32_t max(int32_t a,int32_t b){
+  return a>b?a:b;
+}
+
+/* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), not use SIMD, standard SW not Banded SW */
+int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+	/* code wiki
+	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
+	 * let E for value from up, F for value from left
+	 * H(i,j) = max{M(i,j), E(i,j), F(i,j), 0}
+	 * M(i,j) = H(i-1, j-1) + s(ai, bj)
+	 * E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del}
+	 * F(i,j) = max{F(i,j-1) - e_ins, M(i,j-1) -oe_ins}
+	 *
+	 * H(0,0)=h0; H(0,j)=F(0,j)=max{0, h0-e_ins*j-o_ins}
+	 * H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del}
+	 * E(0,j)=0,F(i,0)=0;
+	 */
+  int32_t oe_del=o_del+e_del;
+  int32_t oe_ins=o_ins+e_ins;
+  int32_t arrayE[qlen+1];
+  int32_t *arrayHPrev=calloc(qlen+1,sizeof(int32_t));
+  int32_t *arrayHNow=calloc(qlen+1,sizeof(int32_t));
+  int32_t *arrayHSwap=NULL;
+  for(int i=0;i<qlen+1;i++){
+    arrayHPrev[i]=max(0, h0-e_ins*i-o_ins);//for arrayHPrev[0][i]
+    arrayE[i]=0;//for arrayE[1][i]
+  }
+  arrayHPrev[0]=h0; arrayE[0]=h0-oe_del;
+  int32_t maxValue=h0, maxi=0, maxj=0;
+  int32_t maxValue2qend=0, qendMaxi=0;
+  int32_t max_off=0;
+  for(int i=1;i<tlen+1;i++){
+    arrayHNow[0]=max(0,h0-e_del*i-o_del);
+    int32_t F=0;
+    int32_t rowMaxValue=arrayHNow[0], rowMaxj=0;
+    for(int j=1;j<qlen+1;j++){
+      //arrayHPrev[j] for arrayHPrev[i-1][j]; arrayE[j] for array[i][j]
+      //because E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del} and we not store M(i-1,j) value,
+      //we precaculate the E(i,j) first and store it, not store E(i-1,j);
+      int32_t M=arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]];
+      int32_t tmp=max(arrayE[j],M);
+      tmp=max(tmp,F);
+      F=max(0,max(F-e_ins,M-oe_ins));
+      arrayE[j]=max(0,max(arrayE[j]-e_del,M-oe_del));
+      arrayHNow[j]=max(tmp,0);
+      if(tmp>=rowMaxValue){
+        rowMaxj=j; rowMaxValue=tmp;
+      }
+    }
+    
+    if(arrayHNow[qlen]>maxValue2qend){
+      maxValue2qend=arrayHNow[0];
+      qendMaxi=i;
+    }
+    arrayHSwap=arrayHNow;
+    arrayHNow=arrayHPrev;
+    arrayHPrev=arrayHSwap;
+    
+    if(rowMaxValue>=maxValue){
+      maxValue=rowMaxValue; maxi=i;maxj=rowMaxj;
+      max_off=max(max_off, max(maxi-maxj, maxj-maxi));
+    }else if(zdrop >0){
+      if(i-maxi>rowMaxj-maxj){
+	if(maxValue-rowMaxValue-((i-maxi)-(rowMaxj-maxj))*e_del>zdrop) break;
+      }else{
+	if(maxValue-rowMaxValue-((rowMaxj-maxj)-(i-maxi))*e_ins>zdrop) break;
+      }
+    }
+  }
+  free(arrayHPrev);
+  free(arrayHNow);
+  if(_qle) *_qle=maxj;
+  if(_tle) *_tle=maxi;
+  if(_gtle) *_gtle=qendMaxi;
+  if(_gscore) *_gscore=maxValue2qend;
+  if(_max_off) *_max_off=max_off;
+  return maxValue;
 }
 
 int ksw_extend(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int gapo, int gape, int w, int end_bonus, int zdrop, int h0, int *qle, int *tle, int *gtle, int *gscore, int *max_off)
