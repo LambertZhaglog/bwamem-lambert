@@ -508,7 +508,7 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   }
   arrayHPrev[0]=h0; arrayE[0]=h0-oe_del;
   int32_t maxValue=h0, maxi=0, maxj=0;
-  int32_t maxValue2qend=0, qendMaxi=0;
+  int32_t maxValue2qend=-1, qendMaxi=0;//bug fixed
   int32_t max_off=0;
   for(int i=1;i<tlen+1;i++){
     arrayHNow[0]=max(0,h0-e_del*i-o_del);
@@ -518,26 +518,27 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       //arrayHPrev[j] for arrayHPrev[i-1][j]; arrayE[j] for array[i][j]
       //because E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del} and we not store M(i-1,j) value,
       //we precaculate the E(i,j) first and store it, not store E(i-1,j);
-      int32_t M=arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]];
+      //for a match caseM(i,j), if H(i-1,j-1)==0. that mean there's no way there, stopped 
+      int32_t M=arrayHPrev[j-1]==0?0:arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]];
       int32_t tmp=max(arrayE[j],M);
       tmp=max(tmp,F);
       F=max(0,max(F-e_ins,M-oe_ins));
       arrayE[j]=max(0,max(arrayE[j]-e_del,M-oe_del));
       arrayHNow[j]=max(tmp,0);
-      if(tmp>=rowMaxValue){
+      if(tmp>rowMaxValue){
         rowMaxj=j; rowMaxValue=tmp;
       }
     }
     
     if(arrayHNow[qlen]>maxValue2qend){
-      maxValue2qend=arrayHNow[0];
+      maxValue2qend=arrayHNow[qlen];//bug fixed
       qendMaxi=i;
     }
     arrayHSwap=arrayHNow;
     arrayHNow=arrayHPrev;
     arrayHPrev=arrayHSwap;
     
-    if(rowMaxValue>=maxValue){
+    if(rowMaxValue>maxValue){
       maxValue=rowMaxValue; maxi=i;maxj=rowMaxj;
       max_off=max(max_off, max(maxi-maxj, maxj-maxi));
     }else if(zdrop >0){
