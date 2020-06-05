@@ -530,8 +530,8 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       }
     }
     
-    if(arrayHNow[qlen]>maxValue2qend){
-      maxValue2qend=arrayHNow[qlen];//bug fixed
+    if(arrayHNow[qlen]>=maxValue2qend){
+      maxValue2qend=arrayHNow[qlen];
       qendMaxi=i;
     }
     arrayHSwap=arrayHNow;
