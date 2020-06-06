@@ -513,7 +513,7 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   for(int i=1;i<tlen+1;i++){
     arrayHNow[0]=max(0,h0-e_del*i-o_del);
     int32_t F=0;
-    int32_t rowMaxValue=arrayHNow[0], rowMaxj=0;
+    int32_t rowMaxValue=0, rowMaxj=0;
     for(int j=1;j<qlen+1;j++){
       //arrayHPrev[j] for arrayHPrev[i-1][j]; arrayE[j] for array[i][j]
       //because E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del} and we not store M(i-1,j) value,
@@ -530,13 +530,15 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       }
     }
     
-    if(arrayHNow[qlen]>=maxValue2qend){
+    if(arrayHNow[qlen]==0 && arrayHNow[qlen]>=maxValue2qend){
       maxValue2qend=arrayHNow[qlen];
       qendMaxi=i;
     }
     arrayHSwap=arrayHNow;
     arrayHNow=arrayHPrev;
     arrayHPrev=arrayHSwap;
+
+    if(rowMaxValue==0) break;
     
     if(rowMaxValue>maxValue){
       maxValue=rowMaxValue; maxi=i;maxj=rowMaxj;
