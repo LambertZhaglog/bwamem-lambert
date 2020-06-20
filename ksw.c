@@ -502,20 +502,22 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   int32_t *arrayHPrev=calloc(qlen+1,sizeof(int32_t));
   int32_t *arrayHNow=calloc(qlen+1,sizeof(int32_t));
   int32_t *arrayHSwap=NULL;
+  /* set initial value */
   for(int i=0;i<qlen+1;i++){
     arrayHPrev[i]=max(0, h0-e_ins*i-o_ins);//for arrayHPrev[0][i]
     arrayE[i]=0;//for arrayE[1][i]
   }
   arrayHPrev[0]=h0; arrayE[0]=h0-oe_del;
-  int32_t maxValue=h0, maxi=0, maxj=0;
-  int32_t maxValue2qend=-1, qendMaxi=0;//bug fixed
-  int32_t max_off=0;
+  
+  int32_t maxValue=h0, maxi=0, maxj=0;	/* max vaue in the 2-d array, and its column id and row id  */
+  int32_t maxValue2qend=-1, qendMaxi=0; /* for the global alignment */
+  int32_t max_off=0;			/* use to indicate the band width */
   for(int i=1;i<tlen+1;i++){
-    arrayHNow[0]=max(0,h0-e_del*i-o_del);
-    int32_t F=0;
+    arrayHNow[0]=max(0,h0-e_del*i-o_del); /* H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del} */
+    int32_t F=0;			  /* F for F[i][1] */
     int32_t rowMaxValue=0, rowMaxj=0;
     for(int j=1;j<qlen+1;j++){
-      //arrayHPrev[j] for arrayHPrev[i-1][j]; arrayE[j] for array[i][j]
+      //arrayHPrev[j] for H[i-1][j]; arrayE[j] for E[i][j]
       //because E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del} and we not store M(i-1,j) value,
       //we precaculate the E(i,j) first and store it, not store E(i-1,j);
       //for a match caseM(i,j), if H(i-1,j-1)==0. that mean there's no way there, stopped 
@@ -525,12 +527,12 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       F=max(0,max(F-e_ins,M-oe_ins));
       arrayE[j]=max(0,max(arrayE[j]-e_del,M-oe_del));
       arrayHNow[j]=max(tmp,0);
-      if(tmp>rowMaxValue){
+      if(tmp>=rowMaxValue){
         rowMaxj=j; rowMaxValue=tmp;
       }
     }
     
-    if(arrayHNow[qlen]==0 && arrayHNow[qlen]>=maxValue2qend){
+    if( arrayHNow[qlen]>=maxValue2qend){
       maxValue2qend=arrayHNow[qlen];
       qendMaxi=i;
     }
