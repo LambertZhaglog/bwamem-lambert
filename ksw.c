@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <emmintrin.h>
+#include <immintrin.h>
 #include "ksw.h"
 
 #ifdef USE_MALLOC_WRAPPERS
@@ -482,8 +483,8 @@ static inline int32_t max(int32_t a,int32_t b){
   return a>b?a:b;
 }
 
-/* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), not use SIMD, standard SW not Banded SW */
-int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+/* ksw_extend22 version coded by lambert zhaglog, space complexy O(n), not use SIMD, standard SW not Banded SW */
+int ksw_extend22(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
 	/* code wiki
 	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
 	 * let E for value from up, F for value from left
@@ -496,12 +497,12 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
 	 * H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del}
 	 * E(0,j)=0,F(i,0)=0;
 	 */
-  int32_t oe_del=o_del+e_del;
-  int32_t oe_ins=o_ins+e_ins;
-  int32_t arrayE[qlen+1];
-  int32_t *arrayHPrev=calloc(qlen+1,sizeof(int32_t));
-  int32_t *arrayHNow=calloc(qlen+1,sizeof(int32_t));
-  int32_t *arrayHSwap=NULL;
+  int16_t oe_del=o_del+e_del;
+  int16_t oe_ins=o_ins+e_ins;
+  int16_t arrayE[qlen+1];
+  int16_t *arrayHPrev=calloc(qlen+1,sizeof(int16_t));
+  int16_t *arrayHNow=calloc(qlen+1,sizeof(int16_t));
+  int16_t *arrayHSwap=NULL;
   /* set initial value */
   for(int i=0;i<qlen+1;i++){
     arrayHPrev[i]=max(0, h0-e_ins*i-o_ins);//for arrayHPrev[0][i]
@@ -509,20 +510,20 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   }
   arrayHPrev[0]=h0; arrayE[0]=h0-oe_del;
   
-  int32_t maxValue=h0, maxi=0, maxj=0;	/* max vaue in the 2-d array, and its column id and row id  */
-  int32_t maxValue2qend=-1, qendMaxi=0; /* for the global alignment */
-  int32_t max_off=0;			/* use to indicate the band width */
+  int16_t maxValue=h0, maxi=0, maxj=0;	/* max vaue in the 2-d array, and its column id and row id  */
+  int16_t maxValue2qend=-1, qendMaxi=0; /* for the global alignment */
+  int16_t max_off=0;			/* use to indicate the band width */
   for(int i=1;i<tlen+1;i++){
     arrayHNow[0]=max(0,h0-e_del*i-o_del); /* H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del} */
-    int32_t F=0;			  /* F for F[i][1] */
-    int32_t rowMaxValue=0, rowMaxj=0;
+    int16_t F=0;			  /* F for F[i][1] */
+    int16_t rowMaxValue=0, rowMaxj=0;
     for(int j=1;j<qlen+1;j++){
       //arrayHPrev[j] for H[i-1][j]; arrayE[j] for E[i][j]
       //because E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del} and we not store M(i-1,j) value,
       //we precaculate the E(i,j) first and store it, not store E(i-1,j);
       //for a match caseM(i,j), if H(i-1,j-1)==0. that mean there's no way there, stopped 
-      int32_t M=arrayHPrev[j-1]==0?0:arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]];
-      int32_t tmp=max(arrayE[j],M);
+      int16_t M=arrayHPrev[j-1]==0?0:arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]];
+      int16_t tmp=max(arrayE[j],M);
       tmp=max(tmp,F);
       F=max(0,max(F-e_ins,M-oe_ins));
       arrayE[j]=max(0,max(arrayE[j]-e_del,M-oe_del));
@@ -558,6 +559,177 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   if(_qle) *_qle=maxj;
   if(_tle) *_tle=maxi;
   if(_gtle) *_gtle=qendMaxi;
+  if(_gscore) *_gscore=maxValue2qend;
+  if(_max_off) *_max_off=max_off;
+  return maxValue;
+}
+/* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), use SIMD SSE2, standard SW not Banded SW, but has the stripped feature */
+int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+	/* code wiki
+	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
+	 * let E for value from up, F for value from left
+	 * H(i,j) = max{M(i,j), E(i,j), F(i,j), 0}
+	 * M(i,j) = H(i-1, j-1) + s(ai, bj)
+	 * E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del}
+	 * F(i,j) = max{F(i,j-1) - e_ins, M(i,j-1) -oe_ins}
+	 *
+	 * H(0,0)=h0; H(0,j)=F(0,j)=max{0, h0-e_ins*j-o_ins}
+	 * H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del}
+	 * E(0,j)=0,F(i,0)=0;
+	 */
+  // Put the largest number of the 16 numbers in vm into m.
+#define max16(m, vm) (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 8)); \
+					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 4)); \
+					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 2)); \
+					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 1)); \
+					  (m) = _mm_extract_epi16((vm), 0)
+  __m128i voe_del=_mm_set1_epi16(o_del+e_del);
+  __m128i voe_ins=_mm_set1_epi16(o_ins+e_ins);
+  __m128i ve_del=_mm_set1_epi16(e_del);
+  __m128i ve_ins=_mm_set1_epi16(e_ins);
+  int16_t slen=(qlen+7)/8;
+  __m128i *arrayE=(__m128i*)calloc(slen,sizeof(__m128i));
+  __m128i *arrayMF=(__m128i*)calloc(slen,sizeof(__m128i));
+  __m128i *arrayHPrev=(__m128i*)calloc(slen,sizeof(__m128i));
+  __m128i *arrayHNow=(__m128i*)calloc(slen,sizeof(__m128i));
+  __m128i *arrayHSwap=NULL;
+  __m128i *qprofile=(__m128i*)calloc(m*slen,sizeof(__m128i));
+  __m128i *vTemp=(__m128i*)calloc(1,sizeof(__m128i));
+  __m128i vZero=_mm_setzero_si128();
+  __m128i vH;
+  short int *t;
+  /* set initial value for arrayHPrev */
+  t=(short int*)arrayHPrev;
+  for(int i=0;i<slen;i++){
+    int j=i;
+    for(int segNum=0;LIKELY(segNum<8);segNum++){
+      *t++=j>=qlen?0:max(0,h0-e_ins*(j+1)-o_ins);//for arrayHPrev[0][i]
+      j+=slen;
+    }
+  }
+  /* set initial value for E */
+  //nothing to do for calloc
+  
+  /* set qprofile */
+  t=(short int*)qprofile;
+  for(int nt=0;LIKELY(nt<m);nt++){
+    for(int i=0;i<slen;i++){
+      int j=i;
+      for(int segNum=0;LIKELY(segNum<8);segNum++){
+	*t++=j>=qlen?0:mat[nt*m+query[j]];
+	j+=slen;
+      }
+    }
+  }
+  
+  int16_t maxValue=h0, maxi=-1, maxj=-1;	/* max vaue in the 2-d array, and its column id and row id  */
+  int16_t maxValue2qend=-1, qendMaxi=-1; /* for the global alignment */
+  int16_t max_off=0;			/* use to indicate the band width */
+  for(int i=0;i<tlen;i++){
+    //arrayHNow[0]=max(0,h0-e_del*i-o_del); /* H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del} */
+    /* value from prev line */
+    vH=arrayHPrev[slen-1];
+    vH=_mm_slli_si128(vH,2);
+    vH=_mm_insert_epi16(vH,i==0?h0:max(0,h0-e_del*i-o_del),0);
+    __m128i vF=vZero,vM=vZero;		/* Initialize F value to 0, any errors to vH values will be corrected in the lazy_F loop. */
+
+    __m128i vMax=vZero; 	/* vMax is used to record the max values of column i. */
+
+    const __m128i* vP=qprofile+target[i]*slen;
+
+    /* inner loop to process the query sequence */
+    for(int j=0;LIKELY(j<slen);j++){
+      /* M=arrayHPrev[j-1]==0?0:arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]]; */
+      __m128i vMask=_mm_cmpgt_epi16(vH,vZero);
+      vM=_mm_add_epi16(vH,_mm_load_si128(vP+j));
+      vM=_mm_max_epi16(vM,vZero);
+      vM=_mm_and_si128(vM,vMask);
+      /* get max value from vM, arrayE(j), vF */
+      vH=_mm_max_epi16(vM,arrayE[j]);
+      vH=_mm_max_epi16(vH,vF);
+      vMax=_mm_max_epi16(vMax,vH);
+      /* store vH values. */
+      arrayHNow[j]=vH;
+      /* Update vE value */
+      vH=_mm_subs_epu16(vM,voe_del);
+      arrayE[j]=_mm_subs_epu16(arrayE[j],ve_del);
+      arrayE[j]=_mm_max_epu16(vH,arrayE[j]);
+      /* Update vF value and store value to vMF */
+      vH=_mm_subs_epu16(vM,voe_ins);
+      arrayMF[j]=vH;
+      vF=_mm_subs_epu16(vF,ve_ins);
+      vF=_mm_max_epi16(vF,vH);
+      /* load the next vH. */
+      vH=arrayHPrev[j];
+    }
+    /* lazy_F loop */
+    for(int k=0;k<LIKELY(k<8);++k){
+      vF=_mm_slli_si128(vF,2);
+      for(int j=0;LIKELY(j<slen);j++){
+	vH=arrayHNow[j];
+	vH=_mm_max_epi16(vH,vF);
+	vMax=_mm_max_epi16(vMax,vH);
+	arrayHNow[j]=vH;
+	vM=arrayMF[j];
+	vF=_mm_subs_epu8(vF,ve_ins);
+	if(UNLIKELY(!_mm_movemask_epi8(_mm_cmpgt_epi8(vF,vM)))) goto end;
+      }
+    }
+  end:
+    /* get the max value of the line */
+    vH=vMax;
+    int16_t rowMaxValue, rowMaxj=-1;
+    max16(rowMaxValue,vH);
+    
+    if(rowMaxValue==0) break;
+    /* Swap the arrayH pointer */
+    arrayHSwap=arrayHNow;
+    arrayHNow=arrayHPrev;
+    arrayHPrev=arrayHSwap;
+    /* locate the rowMaxj */
+    _mm_store_si128(vTemp,vMax);
+    t=(short int*)vTemp;
+    for(int i=0;i<8;i++){
+      if(t[i]==rowMaxValue){
+	rowMaxj=i;
+      }
+    }
+    t=(short int*)arrayHPrev;
+    int k=0;
+    for(int i=0;i<slen;i++){
+      if(t[i*8+rowMaxj]==rowMaxValue){
+	k=i;
+      }
+    }
+    rowMaxj=rowMaxj*slen+k;
+    /* get the arrayHNow[qlen-1] */
+    _mm_store_si128(vTemp,arrayHPrev[(qlen-1)%slen]);
+    t=(short int*)vTemp;
+    if(t[(qlen-1)/slen]>=maxValue2qend){
+      maxValue2qend=t[(qlen-1)/slen];
+      qendMaxi=i;
+    }
+
+    if(rowMaxValue>maxValue){
+      maxValue=rowMaxValue; maxi=i;maxj=rowMaxj;
+      max_off=max(max_off, max(maxi-maxj, maxj-maxi));
+    }else if(zdrop >0){
+      if(i-maxi>rowMaxj-maxj){
+	if(maxValue-rowMaxValue-((i-maxi)-(rowMaxj-maxj))*e_del>zdrop) break;
+      }else{
+	if(maxValue-rowMaxValue-((rowMaxj-maxj)-(i-maxi))*e_ins>zdrop) break;
+      }
+    }
+  }
+  free(arrayHPrev);
+  free(arrayHNow);
+  free(arrayE);
+  free(arrayMF);
+  free(vTemp);
+  free(qprofile);
+  if(_qle) *_qle=maxj+1;
+  if(_tle) *_tle=maxi+1;
+  if(_gtle) *_gtle=qendMaxi+1;
   if(_gscore) *_gscore=maxValue2qend;
   if(_max_off) *_max_off=max_off;
   return maxValue;
