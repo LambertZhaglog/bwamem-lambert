@@ -577,12 +577,6 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
 	 * H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del}
 	 * E(0,j)=0,F(i,0)=0;
 	 */
-  // Put the largest number of the 16 numbers in vm into m.
-#define max16(m, vm) (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 8)); \
-					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 4)); \
-					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 2)); \
-					  (vm) = _mm_max_epu8((vm), _mm_srli_si128((vm), 1)); \
-					  (m) = _mm_extract_epi16((vm), 0)
   __m128i voe_del=_mm_set1_epi16(o_del+e_del);
   __m128i voe_ins=_mm_set1_epi16(o_ins+e_ins);
   __m128i ve_del=_mm_set1_epi16(e_del);
@@ -653,7 +647,7 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       /* Update vE value */
       vH=_mm_subs_epu16(vM,voe_del);
       arrayE[j]=_mm_subs_epu16(arrayE[j],ve_del);
-      arrayE[j]=_mm_max_epu16(vH,arrayE[j]);
+      arrayE[j]=_mm_max_epi16(vH,arrayE[j]);
       /* Update vF value and store value to vMF */
       vH=_mm_subs_epu16(vM,voe_ins);
       arrayMF[j]=vH;
@@ -663,7 +657,7 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       vH=arrayHPrev[j];
     }
     /* lazy_F loop */
-    for(int k=0;k<LIKELY(k<8);++k){
+    for(int k=0;LIKELY(k<8);++k){
       vF=_mm_slli_si128(vF,2);
       for(int j=0;LIKELY(j<slen);j++){
 	vH=arrayHNow[j];
@@ -671,17 +665,15 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
 	vMax=_mm_max_epi16(vMax,vH);
 	arrayHNow[j]=vH;
 	vM=arrayMF[j];
-	vF=_mm_subs_epu8(vF,ve_ins);
-	if(UNLIKELY(!_mm_movemask_epi8(_mm_cmpgt_epi8(vF,vM)))) goto end;
+	vF=_mm_subs_epu16(vF,ve_ins);
+	if(UNLIKELY(!_mm_movemask_epi8(_mm_cmpgt_epi16(vF,vM)))) goto end;
       }
     }
   end:
     /* get the max value of the line */
     vH=vMax;
-    int16_t rowMaxValue, rowMaxj=-1;
-    max16(rowMaxValue,vH);
+    int16_t rowMaxValue=-1, rowMaxj=-1;
     
-    if(rowMaxValue==0) break;
     /* Swap the arrayH pointer */
     arrayHSwap=arrayHNow;
     arrayHNow=arrayHPrev;
@@ -690,10 +682,12 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
     _mm_store_si128(vTemp,vMax);
     t=(short int*)vTemp;
     for(int i=0;i<8;i++){
-      if(t[i]==rowMaxValue){
-	rowMaxj=i;
+      if(t[i]>=rowMaxValue){
+	rowMaxj=i;rowMaxValue=t[i];
       }
     }
+    
+    if(rowMaxValue==0) break;
     t=(short int*)arrayHPrev;
     int k=0;
     for(int i=0;i<slen;i++){
