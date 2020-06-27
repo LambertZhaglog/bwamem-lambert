@@ -563,8 +563,9 @@ int ksw_extend22(int qlen, const uint8_t *query, int tlen, const uint8_t *target
   if(_max_off) *_max_off=max_off;
   return maxValue;
 }
+
 /* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), use SIMD SSE2, standard SW not Banded SW, but has the stripped feature */
-int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+int ksw_extend23(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
 	/* code wiki
 	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
 	 * let E for value from up, F for value from left
@@ -650,9 +651,9 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
       arrayE[j]=_mm_max_epi16(vH,arrayE[j]);
       /* Update vF value and store value to vMF */
       vH=_mm_subs_epu16(vM,voe_ins);
-      arrayMF[j]=vH;
       vF=_mm_subs_epu16(vF,ve_ins);
       vF=_mm_max_epi16(vF,vH);
+      arrayMF[j]=vF;
       /* load the next vH. */
       vH=arrayHPrev[j];
     }
@@ -721,6 +722,172 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
   free(arrayMF);
   free(vTemp);
   free(qprofile);
+  if(_qle) *_qle=maxj+1;
+  if(_tle) *_tle=maxi+1;
+  if(_gtle) *_gtle=qendMaxi+1;
+  if(_gscore) *_gscore=maxValue2qend;
+  if(_max_off) *_max_off=max_off;
+  return maxValue;
+}
+
+/* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), use SIMD AVX2, standard SW not Banded SW, but has the stripped feature */
+int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+	/* code wiki
+	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
+	 * let E for value from up, F for value from left
+	 * H(i,j) = max{M(i,j), E(i,j), F(i,j), 0}
+	 * M(i,j) = H(i-1, j-1) + s(ai, bj)
+	 * E(i,j) = max{E(i-1, j) - e_del, M(i-1,j)-oe_del}
+	 * F(i,j) = max{F(i,j-1) - e_ins, M(i,j-1) -oe_ins}
+	 *
+	 * H(0,0)=h0; H(0,j)=F(0,j)=max{0, h0-e_ins*j-o_ins}
+	 * H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del}
+	 * E(0,j)=0,F(i,0)=0;
+	 */
+  __m256i voe_del=_mm256_set1_epi16(o_del+e_del);
+  __m256i voe_ins=_mm256_set1_epi16(o_ins+e_ins);
+  __m256i ve_del=_mm256_set1_epi16(e_del);
+  __m256i ve_ins=_mm256_set1_epi16(e_ins);
+  int16_t slen=(qlen+15)/16;
+  __m256i database[4*slen+m*slen+1];
+  __m256i *arrayE=database;
+  __m256i *arrayMF=database+slen;
+  __m256i *arrayHPrev=database+2*slen;
+  __m256i *arrayHNow=database+3*slen;
+  __m256i *arrayHSwap=NULL;
+  __m256i *qprofile=database+4*slen;
+  __m256i *vTemp=database+4*slen+m*slen;
+  __m256i vZero=_mm256_setzero_si256();
+  __m256i vH;
+  short int *t;
+  short int shiftTemp;
+  /* set initial value for arrayHPrev */
+  t=(short int*)arrayHPrev;
+  for(int i=0;i<slen;i++){
+    int j=i;
+    for(int segNum=0;LIKELY(segNum<16);segNum++){
+      *t++=j>=qlen?0:max(0,h0-e_ins*(j+1)-o_ins);//for arrayHPrev[0][i]
+      j+=slen;
+    }
+  }
+  /* set initial value for E */
+  //nothing to do for calloc
+  
+  /* set qprofile */
+  t=(short int*)qprofile;
+  for(int nt=0;LIKELY(nt<m);nt++){
+    for(int i=0;i<slen;i++){
+      int j=i;
+      for(int segNum=0;LIKELY(segNum<16);segNum++){
+	*t++=j>=qlen?0:mat[nt*m+query[j]];
+	j+=slen;
+      }
+    }
+  }
+  
+  int16_t maxValue=h0, maxi=-1, maxj=-1;	/* max vaue in the 2-d array, and its column id and row id  */
+  int16_t maxValue2qend=-1, qendMaxi=-1; /* for the global alignment */
+  int16_t max_off=0;			/* use to indicate the band width */
+  for(int i=0;i<tlen;i++){
+    //arrayHNow[0]=max(0,h0-e_del*i-o_del); /* H(i,0)=E(i,0)=max{0,h0-e_del*i-o_del} */
+    /* value from prev line */
+    vH=arrayHPrev[slen-1];
+    shiftTemp=_mm256_extract_epi16(vH,7);
+    vH=_mm256_slli_si256(vH,2);
+    vH=_mm256_insert_epi16(vH,i==0?h0:max(0,h0-e_del*i-o_del),0);
+    vH=_mm256_insert_epi16(vH,shiftTemp,8);
+    __m256i vF=vZero,vM=vZero;		/* Initialize F value to 0, any errors to vH values will be corrected in the lazy_F loop. */
+
+    __m256i vMax=vZero; 	/* vMax is used to record the max values of column i. */
+
+    const __m256i* vP=qprofile+target[i]*slen;
+
+    /* inner loop to process the query sequence */
+    for(int j=0;LIKELY(j<slen);j++){
+      /* M=arrayHPrev[j-1]==0?0:arrayHPrev[j-1]+mat[m*query[j-1]+target[i-1]]; */
+      __m256i vMask=_mm256_cmpgt_epi16(vH,vZero);
+      vM=_mm256_add_epi16(vH,vP[j]);
+      vM=_mm256_max_epi16(vM,vZero);
+      vM=_mm256_and_si256(vM,vMask);
+      /* get max value from vM, arrayE(j), vF */
+      vH=_mm256_max_epi16(vM,arrayE[j]);
+      vH=_mm256_max_epi16(vH,vF);
+      vMax=_mm256_max_epi16(vMax,vH);
+      /* store vH values. */
+      arrayHNow[j]=vH;
+      /* Update vE value */
+      vH=_mm256_subs_epu16(vM,voe_del);
+      arrayE[j]=_mm256_subs_epu16(arrayE[j],ve_del);
+      arrayE[j]=_mm256_max_epi16(vH,arrayE[j]);
+      /* Update vF value and store value to vMF */
+      vH=_mm256_subs_epu16(vM,voe_ins);
+      vF=_mm256_subs_epu16(vF,ve_ins);
+      vF=_mm256_max_epi16(vF,vH);
+      arrayMF[j]=vF;
+      /* load the next vH. */
+      vH=arrayHPrev[j];
+    }
+    /* lazy_F loop */
+    for(int k=0;LIKELY(k<16);++k){
+      shiftTemp=_mm256_extract_epi16(vF,7);
+      vF=_mm256_slli_si256(vF,2);
+      vF=_mm256_insert_epi16(vF,shiftTemp,8);
+      for(int j=0;LIKELY(j<slen);j++){
+	vH=arrayHNow[j];
+	vH=_mm256_max_epi16(vH,vF);
+	vMax=_mm256_max_epi16(vMax,vH);
+	arrayHNow[j]=vH;
+	vM=arrayMF[j];
+	vF=_mm256_subs_epu16(vF,ve_ins);
+	if(UNLIKELY(!_mm256_movemask_epi8(_mm256_cmpgt_epi16(vF,vM)))) goto end;
+      }
+    }
+  end:
+    /* get the max value of the line */
+    vH=vMax;
+    int16_t rowMaxValue=-1, rowMaxj=-1;
+    
+    /* Swap the arrayH pointer */
+    arrayHSwap=arrayHNow;
+    arrayHNow=arrayHPrev;
+    arrayHPrev=arrayHSwap;
+    /* locate the rowMaxj */
+    _mm256_store_si256(vTemp,vMax);
+    t=(short int*)vTemp;
+    for(int i=0;i<16;i++){
+      if(t[i]>=rowMaxValue){
+	rowMaxj=i;rowMaxValue=t[i];
+      }
+    }
+    
+    if(rowMaxValue==0) break;
+    t=(short int*)arrayHPrev;
+    int k=0;
+    for(int i=0;i<slen;i++){
+      if(t[i*16+rowMaxj]==rowMaxValue){
+	k=i;
+      }
+    }
+    rowMaxj=rowMaxj*slen+k;
+    /* get the arrayHNow[qlen-1] */
+    _mm256_store_si256(vTemp,arrayHPrev[(qlen-1)%slen]);
+    t=(short int*)vTemp;
+    if(t[(qlen-1)/slen]>=maxValue2qend){
+      maxValue2qend=t[(qlen-1)/slen];
+      qendMaxi=i;
+    }
+
+    if(rowMaxValue>maxValue){
+      maxValue=rowMaxValue; maxi=i;maxj=rowMaxj;
+      max_off=max(max_off, max(maxi-maxj, maxj-maxi));
+    }else if(zdrop >0){
+      if(i-maxi>rowMaxj-maxj){
+	if(maxValue-rowMaxValue-((i-maxi)-(rowMaxj-maxj))*e_del>zdrop) break;
+      }else{
+	if(maxValue-rowMaxValue-((rowMaxj-maxj)-(i-maxi))*e_ins>zdrop) break;
+      }
+    }
+  }
   if(_qle) *_qle=maxj+1;
   if(_tle) *_tle=maxi+1;
   if(_gtle) *_gtle=qendMaxi+1;
