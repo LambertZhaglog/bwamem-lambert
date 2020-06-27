@@ -721,7 +721,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 	printf("*** Left query: "); for (j = 0; j < s->qbeg; ++j) putchar("ACGTN"[(int)qs[j]]); putchar('\n');
       }
       a->score = ksw_extend2(s->qbeg, qs, tmp, rs, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[0], opt->pen_clip5, opt->zdrop, s->len * opt->a, &qle, &tle, &gtle, &gscore, &max_off[0]);
-      if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", 0, a->score, aw[0], max_off[0]); fflush(stdout); }
+      if (bwa_verbose >= 4) { printf("*** Left extension: prev_score=%d; score=%d; qle=%d; tle=%d; gtle=%d; gscore=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", s->len*opt->a, a->score, qle, tle, gtle, gscore, aw[0], max_off[0]); fflush(stdout); }
       // check whether we prefer to reach the end of the query
       if (gscore <= 0 || gscore <= a->score - opt->pen_clip5) { // local extension
 	a->qb = s->qbeg - qle, a->rb = s->rbeg - tle;
@@ -744,7 +744,7 @@ void mem_chain2aln(const mem_opt_t *opt, const bntseq_t *bns, const uint8_t *pac
 	printf("*** Right query: "); for (j = 0; j < l_query - qe; ++j) putchar("ACGTN"[(int)query[qe+j]]); putchar('\n');
       }
       a->score = ksw_extend2(l_query - qe, query + qe, rmax[1] - rmax[0] - re, rseq + re, 5, opt->mat, opt->o_del, opt->e_del, opt->o_ins, opt->e_ins, aw[1], opt->pen_clip3, opt->zdrop, sc0, &qle, &tle, &gtle, &gscore, &max_off[1]);
-      if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", 0, a->score, aw[1], max_off[1]); fflush(stdout); }
+      if (bwa_verbose >= 4) { printf("*** Right extension: prev_score=%d; score=%d; qle=%d; tle=%d; gtle=%d; gscore=%d; bandwidth=%d; max_off_diagonal_dist=%d\n", sc0, a->score, qle, tle, gtle, gscore, aw[1], max_off[1]); fflush(stdout); }
       // similar to the above
       if (gscore <= 0 || gscore <= a->score - opt->pen_clip3) { // local extension
 	a->qe = qe + qle, a->re = rmax[0] + re + tle;
