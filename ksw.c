@@ -771,7 +771,7 @@ int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target,
     }
   }
   /* set initial value for E */
-  for(int i=0;i<slen){
+  for(int i=0;i<slen;i++){
     arrayE[i]=vZero;
   }
   
