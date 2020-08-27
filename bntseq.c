@@ -308,12 +308,21 @@ int64_t bns_fasta2bntseq(gzFile fp_fa, const char *prefix, int for_only)
 	fp = xopen(name, "wb");
 	// read sequences
 	while (kseq_read(seq) >= 0) pac = add1(seq, bns, pac, &m_pac, &m_seqs, &m_holes, &q);
-	if (!for_only) { // add the reverse complemented sequence
+	if (for_only==0) { // add the reverse complemented sequence
 		int64_t ll_pac = (bns->l_pac * 2 + 3) / 4 * 4;
 		if (ll_pac > m_pac) pac = realloc(pac, ll_pac/4);
 		memset(pac + (bns->l_pac+3)/4, 0, (ll_pac - (bns->l_pac+3)/4*4) / 4);
 		for (l = bns->l_pac - 1; l >= 0; --l, ++bns->l_pac)
 			_set_pac(pac, bns->l_pac, 3-_get_pac(pac, l));
+	}
+	if(for_only==2){//add the reverse complemented sequence and duplicate sequence for cycle rotation
+	  int64_t ll_pac=bns->l_pac*4;
+	  if(ll_pac>m_pac) pac=realloc(pac,ll_pac/4);
+	  memset(pac+(bns->l_pac+3)/4,0,(ll_pac-(bns->l_pac+3)/4*4)/4);
+	  for (l = bns->l_pac - 1; l >= 0; --l, ++bns->l_pac)
+	    _set_pac(pac, bns->l_pac, 3-_get_pac(pac, l));
+	  for(l=0;bns->l_pac<ll_pac;l++,++bns->l_pac)
+	    _set_pac(pac,bns->l_pac,_get_pac(pac,l));
 	}
 	ret = bns->l_pac;
 	{ // finalize .pac file
@@ -335,25 +344,6 @@ int64_t bns_fasta2bntseq(gzFile fp_fa, const char *prefix, int for_only)
 	kseq_destroy(seq);
 	free(pac);
 	return ret;
-}
-
-int bwa_fa2pac(int argc, char *argv[])
-{
-	int c, for_only = 0;
-	gzFile fp;
-	while ((c = getopt(argc, argv, "f")) >= 0) {
-		switch (c) {
-			case 'f': for_only = 1; break;
-		}
-	}
-	if (argc == optind) {
-		fprintf(stderr, "Usage: bwa fa2pac [-f] <in.fasta> [<out.prefix>]\n");
-		return 1;
-	}
-	fp = xzopen(argv[optind], "r");
-	bns_fasta2bntseq(fp, (optind+1 < argc)? argv[optind+1] : argv[optind], for_only);
-	err_gzclose(fp);
-	return 0;
 }
 
 int bns_pos2rid(const bntseq_t *bns, int64_t pos_f)
@@ -380,29 +370,6 @@ int bns_intv2rid(const bntseq_t *bns, int64_t rb, int64_t re)
 	rid_b = bns_pos2rid(bns, bns_depos(bns, rb, &is_rev));
 	rid_e = rb < re? bns_pos2rid(bns, bns_depos(bns, re - 1, &is_rev)) : rid_b;
 	return rid_b == rid_e? rid_b : -1;
-}
-
-int bns_cnt_ambi(const bntseq_t *bns, int64_t pos_f, int len, int *ref_id)
-{
-	int left, mid, right, nn;
-	if (ref_id) *ref_id = bns_pos2rid(bns, pos_f);
-	left = 0; right = bns->n_holes; nn = 0;
-	while (left < right) {
-		mid = (left + right) >> 1;
-		if (pos_f >= bns->ambs[mid].offset + bns->ambs[mid].len) left = mid + 1;
-		else if (pos_f + len <= bns->ambs[mid].offset) right = mid;
-		else { // overlap
-			if (pos_f >= bns->ambs[mid].offset) {
-				nn += bns->ambs[mid].offset + bns->ambs[mid].len < pos_f + len?
-					bns->ambs[mid].offset + bns->ambs[mid].len - pos_f : len;
-			} else {
-				nn += bns->ambs[mid].offset + bns->ambs[mid].len < pos_f + len?
-					bns->ambs[mid].len : len - (bns->ambs[mid].offset - pos_f);
-			}
-			break;
-		}
-	}
-	return nn;
 }
 
 uint8_t *bns_get_seq(int64_t l_pac, const uint8_t *pac, int64_t beg, int64_t end, int64_t *len)

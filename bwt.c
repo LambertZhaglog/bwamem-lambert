@@ -75,6 +75,9 @@ void bwt_cal_sa(bwt_t *bwt, int intv)
   bwt->sa_intv = intv;
   bwt->n_sa = (bwt->seq_len + intv) / intv;
   bwt->sa = (bwtint_t*)calloc(bwt->n_sa, sizeof(bwtint_t));
+  if(bwt->sa==NULL){
+    printf("bwt_cal_sa error:: cannot allocate enough memory\n");
+  }
   // calculate SA value
   isa = 0; sa = bwt->seq_len;
   for (i = 0; i < bwt->seq_len; ++i) {
@@ -85,46 +88,57 @@ void bwt_cal_sa(bwt_t *bwt, int intv)
   if (isa % intv == 0) bwt->sa[isa/intv] = sa;
   bwt->sa[0] = (bwtint_t)-1; // before this line, bwt->sa[0] = bwt->seq_len
 }
-void bwt_cal_sa_lambert(bwt_t *bwt){//checked
-  xassert(bwt->bwt, "bwt_t::bwt is not initialized.");
-  
+
+#define _set_sahigh2(sahigh2,l,c) ((sahigh2)[(l)>>4]|=(c)<<(((~(l))&15)<<1))
+#define _get_sahigh2(sahigh2,l) (((sahigh2)[(l)>>4]>>(((~(l))&15)<<1))&3)
+#define get_sahigh2(l) (((l)>>32)&3)
+void bwt_cal_sa_and_sample(bwt_t *bwt){
+  xassert(bwt->bwt,"bwt_t::bwt is not initialized.");
+
   if(bwt->sa) free(bwt->sa);
-  bwt->sa=(bwtint_t *)calloc(bwt->seq_len+1,sizeof(bwtint_t));
-  bwtint_t isa, sa, i;
-  isa=0; sa=bwt->seq_len;
-  for(i=0;i<bwt->seq_len;i++){
-    bwt->sa[isa]=sa;
+  uint32_t *bwtsa=(uint32_t*)calloc(bwt->seq_len+1+(bwt->seq_len+1+15)/16,sizeof(uint32_t));
+  if(bwtsa==NULL){
+    printf("bwt_cal_sa_and_sample error:: cannot allocate enough memory\n");
+  }
+  bwtint_t isa,sa,i;
+  uint32_t *salow32=bwtsa,*sahigh2=bwtsa+bwt->seq_len+1;
+  isa=0;sa=bwt->seq_len;
+  for(i=0;i<bwt->seq_len/2;i++){
     --sa;
     isa=bwt_invPsi(bwt,isa);
   }
-  bwt->sa[isa]=sa;
-  bwt->sa_intv=1;
-  bwt->n_sa=bwt->seq_len+1;
-}
-
-bwtint_t bwt_sa(const bwt_t *bwt, bwtint_t k)
-{
-  bwtint_t sa = 0, mask = bwt->sa_intv - 1;
-  while (k & mask) {
-    ++sa;
-    k = bwt_invPsi(bwt, k);
+  for(;i<bwt->seq_len;i++){
+    --sa;
+    isa=bwt_invPsi(bwt,isa);
+    salow32[isa]=sa&0xffffffff;
+    _set_sahigh2(sahigh2,isa,(sa>>32)&3);
   }
-       
-  /* without setting bwt->sa[0] = -1, the following line should be 
-     changed to (sa + bwt->sa[k/bwt->sa_intv]) % (bwt->seq_len + 1) */
-	 
-  return sa + bwt->sa[k/bwt->sa_intv];
+  //now isa is isaZero, sa=0
+  i=0;
+  for(int j=0;i<bwt->seq_len+1;i++){
+    if(i==isa){
+      salow32[j]=0;
+      _set_sahigh2(sahigh2,j,0);
+      j++;
+    }
+    if(_get_sahigh2(sahigh2,i)!=0 || salow32[i]!=0){
+      salow32[j]=salow32[i];
+      _set_sahigh2(sahigh2,j,_get_sahigh2(sahigh2,i));
+      j++;
+    }
+  }
+  memmove(bwtsa+bwt->seq_len/2,sahigh2,(bwt->seq_len/2+15)/16*sizeof(uint32_t));
+  bwtsa=(uint32_t *)realloc(bwtsa,(bwt->seq_len/2+(bwt->seq_len/2+15)/16)*sizeof(uint32_t));
+  if(bwtsa==NULL){
+    printf("bwt_cal_sa_and_sample error:: cannot reallocate memory error\n");
+  }
+  bwt->sa=(bwtint_t*)bwtsa;
 }
 
 static int __occ_aux(uint64_t y, int c)
 {
   // reduce nucleotide counting to bits counting
   y = ((c&2)? y : ~y) >> 1 & ((c&1)? y : ~y) & 0x5555555555555555ull;
-  // count the number of 1s in y
-  /*
-    y = (y & 0x3333333333333333ull) + (y >> 2 & 0x3333333333333333ull);
-    return ((y + (y >> 4)) & 0xf0f0f0f0f0f0f0full) * 0x101010101010101ull >> 56;
-  */
   return _mm_popcnt_u64(y);
 }
 
@@ -152,167 +166,9 @@ bwtint_t bwt_occ(const bwt_t *bwt, bwtint_t k, ubyte_t c)
   return n;
 }
 
-// an analogy to bwt_occ() but more efficient, requiring k <= l
-void bwt_2occ(const bwt_t *bwt, bwtint_t k, bwtint_t l, ubyte_t c, bwtint_t *ok, bwtint_t *ol)
-{
-  bwtint_t _k, _l;
-  _k = (k >= bwt->primary)? k-1 : k;
-  _l = (l >= bwt->primary)? l-1 : l;
-  if (_l/OCC_INTERVAL != _k/OCC_INTERVAL || k == (bwtint_t)(-1) || l == (bwtint_t)(-1)) {
-    *ok = bwt_occ(bwt, k, c);
-    *ol = bwt_occ(bwt, l, c);
-  } else {
-    bwtint_t m, n, i, j;
-    uint32_t *p;
-    if (k >= bwt->primary) --k;
-    if (l >= bwt->primary) --l;
-    n = ((bwtint_t*)(p = bwt_occ_intv(bwt, k)))[c];
-    p += sizeof(bwtint_t);
-    // calculate *ok
-    j = k >> 5 << 5;
-    for (i = k/OCC_INTERVAL*OCC_INTERVAL; i < j; i += 32, p += 2)
-      n += __occ_aux((uint64_t)p[0]<<32 | p[1], c);
-    m = n;
-    n += __occ_aux(((uint64_t)p[0]<<32 | p[1]) & ~((1ull<<((~k&31)<<1)) - 1), c);
-    if (c == 0) n -= ~k&31; // corrected for the masked bits
-    *ok = n;
-    // calculate *ol
-    j = l >> 5 << 5;
-    for (; i < j; i += 32, p += 2)
-      m += __occ_aux((uint64_t)p[0]<<32 | p[1], c);
-    m += __occ_aux(((uint64_t)p[0]<<32 | p[1]) & ~((1ull<<((~l&31)<<1)) - 1), c);
-    if (c == 0) m -= ~l&31; // corrected for the masked bits
-    *ol = m;
-  }
-}
-
-
-
-#define __occ_aux4(bwt, b)						\
-  ((bwt)->cnt_table[(b)&0xff] + (bwt)->cnt_table[(b)>>8&0xff]		\
-   + (bwt)->cnt_table[(b)>>16&0xff] + (bwt)->cnt_table[(b)>>24])
-
-void bwt_occ4(const bwt_t *bwt, bwtint_t k, bwtint_t cnt[4])
-{
-  bwtint_t x;
-  uint32_t *p, tmp, *end;
-  if (k == (bwtint_t)(-1)) {
-    memset(cnt, 0, 4 * sizeof(bwtint_t));
-    return;
-  }
-  k -= (k >= bwt->primary); // because $ is not in bwt
-  p = bwt_occ_intv(bwt, k);
-  memcpy(cnt, p, 4 * sizeof(bwtint_t));
-  p += sizeof(bwtint_t); // sizeof(bwtint_t) = 4*(sizeof(bwtint_t)/sizeof(uint32_t))
-  end = p + ((k>>4) - ((k&~OCC_INTV_MASK)>>4)); // this is the end point of the following loop
-  for (x = 0; p < end; ++p) x += __occ_aux4(bwt, *p);
-  tmp = *p & ~((1U<<((~k&15)<<1)) - 1);
-  x += __occ_aux4(bwt, tmp) - (~k&15);
-  cnt[0] += x&0xff; cnt[1] += x>>8&0xff; cnt[2] += x>>16&0xff; cnt[3] += x>>24;
-}
-void inline bwt_occ4_lambert(const bwt_t *bwt, bwtint_t k, bwtint_t cntk[4]){
-  bwtint_t *line=((bwtint_t *)bwt->bwt)+k/64*8;
-  bwtint_t rshift=63-k%64;
-  cntk[0]=line[0]+_mm_popcnt_u64(line[0+4]>>rshift);
-  cntk[1]=line[1]+_mm_popcnt_u64(line[1+4]>>rshift);
-  cntk[2]=line[2]+_mm_popcnt_u64(line[2+4]>>rshift);
-  cntk[3]=line[3]+_mm_popcnt_u64(line[3+4]>>rshift);
-}
-
-
-// an analogy to bwt_occ4() but more efficient, requiring k <= l
-void bwt_2occ4(const bwt_t *bwt, bwtint_t k, bwtint_t l, bwtint_t cntk[4], bwtint_t cntl[4])
-{
-  bwtint_t _k, _l;
-  _k = k - (k >= bwt->primary);
-  _l = l - (l >= bwt->primary);
-  if (_l>>OCC_INTV_SHIFT != _k>>OCC_INTV_SHIFT || k == (bwtint_t)(-1) || l == (bwtint_t)(-1)) {
-    bwt_occ4(bwt, k, cntk);
-    bwt_occ4(bwt, l, cntl);
-  } else {
-    bwtint_t x, y;
-    uint32_t *p, tmp, *endk, *endl;
-    k -= (k >= bwt->primary); // because $ is not in bwt
-    l -= (l >= bwt->primary);
-    p = bwt_occ_intv(bwt, k);
-    memcpy(cntk, p, 4 * sizeof(bwtint_t));
-    p += sizeof(bwtint_t); // sizeof(bwtint_t) = 4*(sizeof(bwtint_t)/sizeof(uint32_t))
-    // prepare cntk[]
-    endk = p + ((k>>4) - ((k&~OCC_INTV_MASK)>>4));
-    endl = p + ((l>>4) - ((l&~OCC_INTV_MASK)>>4));
-    for (x = 0; p < endk; ++p) x += __occ_aux4(bwt, *p);
-    y = x;
-    tmp = *p & ~((1U<<((~k&15)<<1)) - 1);
-    x += __occ_aux4(bwt, tmp) - (~k&15);
-    // calculate cntl[] and finalize cntk[]
-    for (; p < endl; ++p) y += __occ_aux4(bwt, *p);
-    tmp = *p & ~((1U<<((~l&15)<<1)) - 1);
-    y += __occ_aux4(bwt, tmp) - (~l&15);
-    memcpy(cntl, cntk, 4 * sizeof(bwtint_t));
-    cntk[0] += x&0xff; cntk[1] += x>>8&0xff; cntk[2] += x>>16&0xff; cntk[3] += x>>24;
-    cntl[0] += y&0xff; cntl[1] += y>>8&0xff; cntl[2] += y>>16&0xff; cntl[3] += y>>24;
-  }
-}
-
-int bwt_match_exact(const bwt_t *bwt, int len, const ubyte_t *str, bwtint_t *sa_begin, bwtint_t *sa_end)
-{
-  bwtint_t k, l, ok, ol;
-  int i;
-  k = 0; l = bwt->seq_len;
-  for (i = len - 1; i >= 0; --i) {
-    ubyte_t c = str[i];
-    if (c > 3) return 0; // no match
-    bwt_2occ(bwt, k - 1, l, c, &ok, &ol);
-    k = bwt->L2[c] + ok + 1;
-    l = bwt->L2[c] + ol;
-    if (k > l) break; // no match
-  }
-  if (k > l) return 0; // no match
-  if (sa_begin) *sa_begin = k;
-  if (sa_end)   *sa_end = l;
-  return l - k + 1;
-}
-
-int bwt_match_exact_alt(const bwt_t *bwt, int len, const ubyte_t *str, bwtint_t *k0, bwtint_t *l0)
-{
-  int i;
-  bwtint_t k, l, ok, ol;
-  k = *k0; l = *l0;
-  for (i = len - 1; i >= 0; --i) {
-    ubyte_t c = str[i];
-    if (c > 3) return 0; // there is an N here. no match
-    bwt_2occ(bwt, k - 1, l, c, &ok, &ol);
-    k = bwt->L2[c] + ok + 1;
-    l = bwt->L2[c] + ol;
-    if (k > l) return 0; // no match
-  }
-  *k0 = k; *l0 = l;
-  return l - k + 1;
-}
-
 /*********************
  * Bidirectional BWT *
  *********************/
-void bwt_extend(const bwt_t *bwt, const bwtintv_t *ik, bwtintv_t ok[4], int is_back)
-{
-  bwtint_t tk[4], tl[4];
-  //bwt_2occ4(bwt, ik->x[!is_back] - 1, ik->x[!is_back] - 1 + ik->x[2], tk, tl);                            
-  bwt_occ4_lambert(bwt,ik->x[!is_back] - 1, tk);
-  bwt_occ4_lambert(bwt, ik->x[!is_back] - 1 + ik->x[2], tl);
-  ok[0].x[!is_back] = bwt->L2[0] + 1 + tk[0];
-  ok[0].x[2] = tl[0] - tk[0];
-  ok[1].x[!is_back] = bwt->L2[1] + 1 + tk[1];
-  ok[1].x[2] = tl[1] - tk[1];
-  ok[2].x[!is_back] = bwt->L2[2] + 1 + tk[2];
-  ok[2].x[2] = tl[2] - tk[2];
-  ok[3].x[!is_back] = bwt->L2[3] + 1 + tk[3];
-  ok[3].x[2] = tl[3] - tk[3];
-
-  ok[3].x[is_back] = ik->x[is_back] + (ik->x[!is_back] <= bwt->primary && ik->x[!is_back] + ik->x[2] - 1 >=bwt->primary);
-  ok[2].x[is_back] = ok[3].x[is_back] + ok[3].x[2];
-  ok[1].x[is_back] = ok[2].x[is_back] + ok[2].x[2];
-  ok[0].x[is_back] = ok[1].x[is_back] + ok[1].x[2];
-}
 
 static void bwt_reverse_intvs(bwtintv_v *p)
 {
@@ -325,213 +181,432 @@ static void bwt_reverse_intvs(bwtintv_v *p)
     }
   }
 }
-
-void inline BF(const bwtint_t *lineS, const bwtint_t *lineE, const bwtint_t rshiftS, const bwtint_t rshiftE, bwtint_t store[4][4]){
-//store[0]-->x0(FS), store[1]-->x1(RS), store[2]-->x2(LEN), store[3]-->L2
-//store[0][3] = ik->x[is_back]+flag; has set already.
-    store[2][3]=lineE[3]+_mm_popcnt_u64(lineE[7]>>rshiftE)-(store[1][3]=lineS[3]+_mm_popcnt_u64(lineS[7]>>rshiftS));
-    store[1][3]+=store[3][3];
-	store[0][2]=store[0][3]+store[2][3];
-    store[2][2]=lineE[2]+_mm_popcnt_u64(lineE[6]>>rshiftE)-(store[1][2]=lineS[2]+_mm_popcnt_u64(lineS[6]>>rshiftS));
-    store[1][2]+=store[3][2];
-	store[0][1]=store[0][2]+store[2][2];
-    store[2][1]=lineE[1]+_mm_popcnt_u64(lineE[5]>>rshiftE)-(store[1][1]=lineS[1]+_mm_popcnt_u64(lineS[5]>>rshiftS));
-    store[1][1]+=store[3][1];
-	store[0][0]=store[0][1]+store[2][1];
-    store[2][0]=lineE[0]+_mm_popcnt_u64(lineE[4]>>rshiftE)-(store[1][0]=lineS[0]+_mm_popcnt_u64(lineS[4]>>rshiftS));
-    store[1][0]+=store[3][0];
+static void remove_duplicate_intvs(bwtintv_v *p){
+  if(p->n>1){
+    int num=p->n;
+    int j=0;
+    for(int i=1;i<num;i++){
+      if(p->a[j].len==p->a[i].len){
+	p->a[j]=p->a[i];
+	p->n--;
+      }else{
+	j++;
+	p->a[j]=p->a[i];
+      }
+    }
+  }
 }
-int bwt_smem1b(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
+int forwardExtensionTwoStepFsRs(const lbwt_t *bwt,char c[2],bwtintv_t *current,bwtintv_t *next){
+    //return value: the step of function, if c[0]>4,return 0, if c[1]>4, return 1, else return 2;
+  uint64_t lineS=current->rs/128;
+  uint64_t lineE=(current->rs+current->len)/128;
+    int rshiftS=63-current->rs%64;//
+    int rshiftE=63-(current->rs+current->len)%64;
+    int greatS=(current->rs)%128>=64;
+    int greatE=(current->rs+current->len)%128>=64;
+    uint64_t occ1S[4], occ1E[4];
+    uint32_t *tmp=(bwt->occArray[lineS].base);
+    occ1S[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
+    occ1S[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
+    occ1S[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
+    occ1S[3]=tmp[12]+tmp[13]+tmp[14]+tmp[15];
+    tmp=(bwt->occArray[lineE].base);
+    occ1E[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
+    occ1E[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
+    occ1E[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
+    occ1E[3]=tmp[12]+tmp[13]+tmp[14]+tmp[15];
+    uint64_t nextSelectS[2],nextUnselectS[2];
+    uint64_t nextSelectE[2],nextUnselectE[2];
+    uint64_t next1SelectS[2],next1UnselectS[2];
+    uint64_t next1SelectE[2],next1UnselectE[2];
+    uint64_t baseUnselectS,baseUnselectE;//select for RS value, unselect for FS value
+    uint64_t cntSelectS,cntSelectE;//next for get the original char and can be used to caculate next1,cnt for change next to number, base for accumulate the Oline.base
+    uint64_t cntUnselectS,cntUnselectE;
+    switch(c[0]){
+        case 0://a
+            nextSelectS[0]=bwt->occArray[lineS].offset[4] & bwt->occArray[lineS].offset[6];
+            nextSelectS[1]=bwt->occArray[lineS].offset[5] & bwt->occArray[lineS].offset[7];
+            nextUnselectS[0]=0;
+            nextUnselectS[1]=0;
+            baseUnselectS=0;
+            nextSelectE[0]=bwt->occArray[lineE].offset[4] & bwt->occArray[lineE].offset[6];
+            nextSelectE[1]=bwt->occArray[lineE].offset[5] & bwt->occArray[lineE].offset[7];
+            nextUnselectE[0]=0;
+            nextUnselectE[1]=0;
+            baseUnselectE=0;
+            break;
+        case 1://c
+            nextSelectS[0]=bwt->occArray[lineS].offset[4] &(~ bwt->occArray[lineS].offset[6]);
+            nextSelectS[1]=bwt->occArray[lineS].offset[5] &(~ bwt->occArray[lineS].offset[7]);
+            nextUnselectS[0]=bwt->occArray[lineS].offset[4] & bwt->occArray[lineS].offset[6];
+            nextUnselectS[1]=bwt->occArray[lineS].offset[5] & bwt->occArray[lineS].offset[7];
+            baseUnselectS=occ1S[3];
+            nextSelectE[0]=bwt->occArray[lineE].offset[4] &(~ bwt->occArray[lineE].offset[6]);
+            nextSelectE[1]=bwt->occArray[lineE].offset[5] &(~ bwt->occArray[lineE].offset[7]);
+            nextUnselectE[0]=bwt->occArray[lineE].offset[4] & bwt->occArray[lineE].offset[6];
+            nextUnselectE[1]=bwt->occArray[lineE].offset[5] & bwt->occArray[lineE].offset[7];
+            baseUnselectE=occ1E[3];
+            break;
+        case 2://g
+            nextSelectS[0]=(~bwt->occArray[lineS].offset[4]) & bwt->occArray[lineS].offset[6];
+            nextSelectS[1]=(~bwt->occArray[lineS].offset[5]) & bwt->occArray[lineS].offset[7];
+            nextUnselectS[0]=bwt->occArray[lineS].offset[4];
+            nextUnselectS[1]=bwt->occArray[lineS].offset[5];
+            baseUnselectS=occ1S[3]+occ1S[2];
+            nextSelectE[0]=(~bwt->occArray[lineE].offset[4]) & bwt->occArray[lineE].offset[6];
+            nextSelectE[1]=(~bwt->occArray[lineE].offset[5]) & bwt->occArray[lineE].offset[7];
+            nextUnselectE[0]=bwt->occArray[lineE].offset[4];
+            nextUnselectE[1]=bwt->occArray[lineE].offset[5];
+            baseUnselectE=occ1E[3]+occ1E[2];
+            break;
+        case 3://t
+            nextSelectS[0]=(~bwt->occArray[lineS].offset[4]) &(~ bwt->occArray[lineS].offset[6]);
+            nextSelectS[1]=(~bwt->occArray[lineS].offset[5]) &(~ bwt->occArray[lineS].offset[7]);
+            nextUnselectS[0]=(bwt->occArray[lineS].offset[4]|bwt->occArray[lineS].offset[6]);
+            nextUnselectS[1]=(bwt->occArray[lineS].offset[5]|bwt->occArray[lineS].offset[7]);
+            baseUnselectS=occ1S[3]+occ1S[1]+occ1S[2];
+            nextSelectE[0]=(~bwt->occArray[lineE].offset[4]) &(~ bwt->occArray[lineE].offset[6]);
+            nextSelectE[1]=(~bwt->occArray[lineE].offset[5]) &(~ bwt->occArray[lineE].offset[7]);
+            nextUnselectE[0]=(bwt->occArray[lineE].offset[4]|bwt->occArray[lineE].offset[6]);
+            nextUnselectE[1]=(bwt->occArray[lineE].offset[5]|bwt->occArray[lineE].offset[7]);
+            baseUnselectE=occ1E[3]+occ1E[1]+occ1E[2];
+            break;
+        default:return 0;
+    }
+    if(greatS){
+      cntSelectS=_mm_popcnt_u64(nextSelectS[0])+_mm_popcnt_u64((nextSelectS[1]>>rshiftS)>>1);
+      cntUnselectS=_mm_popcnt_u64(nextUnselectS[0])+_mm_popcnt_u64((nextUnselectS[1]>>rshiftS)>>1);
+    }else{
+      cntSelectS=_mm_popcnt_u64((nextSelectS[0]>>rshiftS)>>1);
+      cntUnselectS=_mm_popcnt_u64((nextUnselectS[0]>>rshiftS)>>1);
+    }
+    if(greatE){
+      cntSelectE=_mm_popcnt_u64(nextSelectE[0])+_mm_popcnt_u64((nextSelectE[1]>>rshiftE)>>1);
+      cntUnselectE=_mm_popcnt_u64(nextUnselectE[0])+_mm_popcnt_u64((nextUnselectE[1]>>rshiftE)>>1);
+    }else{
+      cntSelectE=_mm_popcnt_u64((nextSelectE[0]>>rshiftE)>>1);
+      cntUnselectE=_mm_popcnt_u64((nextUnselectE[0]>>rshiftE)>>1);
+    }
+    next[0].rs=bwt->c1Array[3-c[0]]+occ1S[3-c[0]]+cntSelectS;
+    next[0].len=occ1E[3-c[0]]-occ1S[3-c[0]]+cntSelectE-cntSelectS;
+    next[0].fs=current->fs+cntUnselectE-cntUnselectS+baseUnselectE-baseUnselectS;
+    //printf("cntS=%lu,cntE=%lu,occ1S=%lu,occ1E=%lu\n",cntSelectS,cntSelectE,occ1S[3-c[0]],occ1E[3-c[0]]);
+    next[0].readBegin=current->readBegin;
+    next[0].readEnd=current->readEnd+1;
+    switch(c[1]){
+        case 0://a
+            next1SelectS[0]=bwt->occArray[lineS].offset[0] & bwt->occArray[lineS].offset[2];
+            next1SelectS[1]=bwt->occArray[lineS].offset[1] & bwt->occArray[lineS].offset[3];
+            next1UnselectS[0]=0;
+            next1UnselectS[1]=0;
+            baseUnselectS=0;
+            next1SelectE[0]=bwt->occArray[lineE].offset[0] & bwt->occArray[lineE].offset[2];
+            next1SelectE[1]=bwt->occArray[lineE].offset[1] & bwt->occArray[lineE].offset[3];
+            next1UnselectE[0]=0;
+            next1UnselectE[1]=0;
+            baseUnselectE=0;
+            break;
+        case 1://c
+            next1SelectS[0]=bwt->occArray[lineS].offset[0] &(~ bwt->occArray[lineS].offset[2]);
+            next1SelectS[1]=bwt->occArray[lineS].offset[1] &(~ bwt->occArray[lineS].offset[3]);
+            next1UnselectS[0]=bwt->occArray[lineS].offset[0] & bwt->occArray[lineS].offset[2];
+            next1UnselectS[1]=bwt->occArray[lineS].offset[1] & bwt->occArray[lineS].offset[3];
+            baseUnselectS=bwt->occArray[lineS].base[(3-c[0])*4+3];
+            next1SelectE[0]=bwt->occArray[lineE].offset[0] &(~ bwt->occArray[lineE].offset[2]);
+            next1SelectE[1]=bwt->occArray[lineE].offset[1] &(~ bwt->occArray[lineE].offset[3]);
+            next1UnselectE[0]=bwt->occArray[lineE].offset[0] & bwt->occArray[lineE].offset[2];
+            next1UnselectE[1]=bwt->occArray[lineE].offset[1] & bwt->occArray[lineE].offset[3];
+            baseUnselectE=bwt->occArray[lineE].base[(3-c[0])*4+3];
+            break;
+        case 2://g
+            next1SelectS[0]=(~bwt->occArray[lineS].offset[0]) & bwt->occArray[lineS].offset[2];
+            next1SelectS[1]=(~bwt->occArray[lineS].offset[1]) & bwt->occArray[lineS].offset[3];
+            next1UnselectS[0]=bwt->occArray[lineS].offset[0];
+            next1UnselectS[1]=bwt->occArray[lineS].offset[1];
+            baseUnselectS=bwt->occArray[lineS].base[(3-c[0])*4+3]+bwt->occArray[lineS].base[(3-c[0])*4+2];
+            next1SelectE[0]=(~bwt->occArray[lineE].offset[0]) & bwt->occArray[lineE].offset[2];
+            next1SelectE[1]=(~bwt->occArray[lineE].offset[1]) & bwt->occArray[lineE].offset[3];
+            next1UnselectE[0]=bwt->occArray[lineE].offset[0];
+            next1UnselectE[1]=bwt->occArray[lineE].offset[1];
+            baseUnselectE=bwt->occArray[lineE].base[(3-c[0])*4+3]+bwt->occArray[lineE].base[(3-c[0])*4+2];
+            break;
+        case 3://t
+            next1SelectS[0]=(~bwt->occArray[lineS].offset[0]) &(~ bwt->occArray[lineS].offset[2]);
+            next1SelectS[1]=(~bwt->occArray[lineS].offset[1]) &(~ bwt->occArray[lineS].offset[3]);
+            next1UnselectS[0]=(bwt->occArray[lineS].offset[0]|bwt->occArray[lineS].offset[2]);
+            next1UnselectS[1]=(bwt->occArray[lineS].offset[1]|bwt->occArray[lineS].offset[3]);
+            baseUnselectS=bwt->occArray[lineS].base[(3-c[0])*4+3]+bwt->occArray[lineS].base[(3-c[0])*4+2]+bwt->occArray[lineS].base[(3-c[0])*4+1];
+            next1SelectE[0]=(~bwt->occArray[lineE].offset[0]) &(~ bwt->occArray[lineE].offset[2]);
+            next1SelectE[1]=(~bwt->occArray[lineE].offset[1]) &(~ bwt->occArray[lineE].offset[3]);
+            next1UnselectE[0]=(bwt->occArray[lineE].offset[0]|bwt->occArray[lineE].offset[2]);
+            next1UnselectE[1]=(bwt->occArray[lineE].offset[1]|bwt->occArray[lineE].offset[3]);
+            baseUnselectE=bwt->occArray[lineE].base[(3-c[0])*4+3]+bwt->occArray[lineE].base[(3-c[0])*4+2]+bwt->occArray[lineE].base[(3-c[0])*4+1];
+            break;
+        default:
+            return 1;
+    }
+    if(greatS){
+      cntSelectS=_mm_popcnt_u64(nextSelectS[0]&next1SelectS[0])+_mm_popcnt_u64(((nextSelectS[1]&next1SelectS[1])>>rshiftS)>>1);
+      cntUnselectS=_mm_popcnt_u64(next1UnselectS[0]&nextSelectS[0])+_mm_popcnt_u64(((next1UnselectS[1]&nextSelectS[1])>>rshiftS)>>1);
+    }else{
+      cntSelectS=_mm_popcnt_u64(((nextSelectS[0]&next1SelectS[0])>>rshiftS)>>1);
+      cntUnselectS=_mm_popcnt_u64(((nextSelectS[0]&next1UnselectS[0])>>rshiftS)>>1);
+    }
+    if(greatE){
+      cntSelectE=_mm_popcnt_u64(nextSelectE[0]&next1SelectE[0])+_mm_popcnt_u64(((nextSelectE[1]&next1SelectE[1])>>rshiftE)>>1);
+      cntUnselectE=_mm_popcnt_u64(nextSelectE[0]&next1UnselectE[0])+_mm_popcnt_u64(((nextSelectE[1]&next1UnselectE[1])>>rshiftE)>>1);
+    }else{
+      cntSelectE=_mm_popcnt_u64(((nextSelectE[0]&next1SelectE[0])>>rshiftE)>>1);
+      cntUnselectE=_mm_popcnt_u64(((nextSelectE[0]&next1UnselectE[0])>>rshiftE)>>1);
+    }
+    next[1].rs=bwt->c2Array[(3-c[1])*4+(3-c[0])]+bwt->occArray[lineS].base[(3-c[0])*4+(3-c[1])]+cntSelectS;
+    next[1].len=bwt->occArray[lineE].base[(3-c[0])*4+(3-c[1])]-bwt->occArray[lineS].base[(3-c[0])*4+(3-c[1])]+cntSelectE-cntSelectS;
+    next[1].fs=next[0].fs+cntUnselectE-cntUnselectS+baseUnselectE-baseUnselectS;
+    next[1].readBegin=current->readBegin;
+    next[1].readEnd=current->readEnd+2;
+    return 2;
+}
+
+int backwardExtensionTwoStepFs(const lbwt_t *bwt, char cc[2], bwtintv_t *current, bwtintv_t *next){
+  //c[0]=q[current->readBegin-2], c[1]=q[current->readEnd-1]
+  int c[2];
+  c[1]=cc[0];c[0]=cc[1];
+    uint64_t lineS=current->fs/128;
+    uint64_t lineE=(current->fs+current->len)/128;
+    int rshiftS=63-current->fs%64;//
+    int rshiftE=63-(current->fs+current->len)%64;
+    int greatS=(current->fs)%128>=64;
+    int greatE=(current->fs+current->len)%128>=64;
+    uint64_t occ1S[4], occ1E[4];
+    uint32_t *tmp=(bwt->occArray[lineS].base);
+    occ1S[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
+    occ1S[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
+    occ1S[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
+    occ1S[3]=tmp[12]+tmp[13]+tmp[14]+tmp[15];
+    tmp=(bwt->occArray[lineE].base);
+    occ1E[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
+    occ1E[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
+    occ1E[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
+    occ1E[3]=tmp[12]+tmp[13]+tmp[14]+tmp[15];
+    uint64_t nextSelectS[2];
+    uint64_t nextSelectE[2];
+    uint64_t next1SelectS[2];
+    uint64_t next1SelectE[2];//select for FS value
+    uint64_t cntSelectS,cntSelectE;//next for get the original char and can be used to caculate next1,cnt for change next to number
+    switch(c[0]){
+        case 0://a
+	  nextSelectS[0]=(~bwt->occArray[lineS].offset[4]) & (~bwt->occArray[lineS].offset[6]);
+	  nextSelectS[1]=(~bwt->occArray[lineS].offset[5]) & (~bwt->occArray[lineS].offset[7]);
+	  nextSelectE[0]=(~bwt->occArray[lineE].offset[4]) & (~bwt->occArray[lineE].offset[6]);
+	  nextSelectE[1]=(~bwt->occArray[lineE].offset[5]) & (~bwt->occArray[lineE].offset[7]);
+	  break;
+        case 1://c
+	  nextSelectS[0]=(~bwt->occArray[lineS].offset[4]) & bwt->occArray[lineS].offset[6];
+	  nextSelectS[1]=(~bwt->occArray[lineS].offset[5]) & bwt->occArray[lineS].offset[7];
+	  nextSelectE[0]=(~bwt->occArray[lineE].offset[4]) & bwt->occArray[lineE].offset[6];
+	  nextSelectE[1]=(~bwt->occArray[lineE].offset[5]) & bwt->occArray[lineE].offset[7];
+	  break;
+        case 2://g
+	  nextSelectS[0]=bwt->occArray[lineS].offset[4] & (~bwt->occArray[lineS].offset[6]);
+	  nextSelectS[1]=bwt->occArray[lineS].offset[5] & (~bwt->occArray[lineS].offset[7]);
+	  nextSelectE[0]=bwt->occArray[lineE].offset[4] & (~bwt->occArray[lineE].offset[6]);
+	  nextSelectE[1]=bwt->occArray[lineE].offset[5] & (~bwt->occArray[lineE].offset[7]);
+	  break;
+        case 3://t
+	  nextSelectS[0]=bwt->occArray[lineS].offset[4] & bwt->occArray[lineS].offset[6];
+	  nextSelectS[1]=bwt->occArray[lineS].offset[5] & bwt->occArray[lineS].offset[7];
+	  nextSelectE[0]=bwt->occArray[lineE].offset[4] & bwt->occArray[lineE].offset[6];
+	  nextSelectE[1]=bwt->occArray[lineE].offset[5] & bwt->occArray[lineE].offset[7];
+	  break;
+        default:return 0;
+    }
+    if(greatS){
+      cntSelectS=_mm_popcnt_u64(nextSelectS[0])+_mm_popcnt_u64((nextSelectS[1]>>rshiftS)>>1);
+    }else{
+      cntSelectS=_mm_popcnt_u64((nextSelectS[0]>>rshiftS)>>1);
+    }
+    if(greatE){
+      cntSelectE=_mm_popcnt_u64(nextSelectE[0])+_mm_popcnt_u64((nextSelectE[1]>>rshiftE)>>1);
+    }else{
+      cntSelectE=_mm_popcnt_u64((nextSelectE[0]>>rshiftE)>>1);
+    }
+    next[0].fs=bwt->c1Array[c[0]]+occ1S[c[0]]+cntSelectS;
+    next[0].len=occ1E[c[0]]-occ1S[c[0]]+cntSelectE-cntSelectS;
+    next[0].readBegin=current->readBegin-1;
+    next[0].readEnd=current->readEnd;
+    switch(c[1]){
+        case 0://a
+	  next1SelectS[0]=(~bwt->occArray[lineS].offset[0]) & (~bwt->occArray[lineS].offset[2]);
+	  next1SelectS[1]=(~bwt->occArray[lineS].offset[1]) & (~bwt->occArray[lineS].offset[3]);
+	  next1SelectE[0]=(~bwt->occArray[lineE].offset[0]) & (~bwt->occArray[lineE].offset[2]);
+	  next1SelectE[1]=(~bwt->occArray[lineE].offset[1]) & (~bwt->occArray[lineE].offset[3]);
+	  break;
+        case 1://c
+	  next1SelectS[0]=(~bwt->occArray[lineS].offset[0]) & bwt->occArray[lineS].offset[2];
+	  next1SelectS[1]=(~bwt->occArray[lineS].offset[1]) & bwt->occArray[lineS].offset[3];
+	  next1SelectE[0]=(~bwt->occArray[lineE].offset[0]) & bwt->occArray[lineE].offset[2];
+	  next1SelectE[1]=(~bwt->occArray[lineE].offset[1]) & bwt->occArray[lineE].offset[3];
+	  break;
+        case 2://g
+	  next1SelectS[0]=bwt->occArray[lineS].offset[0] & (~bwt->occArray[lineS].offset[2]);
+	  next1SelectS[1]=bwt->occArray[lineS].offset[1] & (~bwt->occArray[lineS].offset[3]);
+	  next1SelectE[0]=bwt->occArray[lineE].offset[0] & (~bwt->occArray[lineE].offset[2]);
+	  next1SelectE[1]=bwt->occArray[lineE].offset[1] & (~bwt->occArray[lineE].offset[3]);
+	  break;
+        case 3://t
+	  next1SelectS[0]=bwt->occArray[lineS].offset[0] & bwt->occArray[lineS].offset[2];
+	  next1SelectS[1]=bwt->occArray[lineS].offset[1] & bwt->occArray[lineS].offset[3];
+	  next1SelectE[0]=bwt->occArray[lineE].offset[0] & bwt->occArray[lineE].offset[2];
+	  next1SelectE[1]=bwt->occArray[lineE].offset[1] & bwt->occArray[lineE].offset[3];
+	  break;
+        default:
+	  return 1;
+    }
+    if(greatS){
+      cntSelectS=_mm_popcnt_u64(nextSelectS[0]&next1SelectS[0])+_mm_popcnt_u64(((nextSelectS[1]&next1SelectS[1])>>rshiftS)>>1);
+    }else{
+      cntSelectS=_mm_popcnt_u64(((nextSelectS[0]&next1SelectS[0])>>rshiftS)>>1);
+    }
+    if(greatE){
+      cntSelectE=_mm_popcnt_u64(nextSelectE[0]&next1SelectE[0])+_mm_popcnt_u64(((nextSelectE[1]&next1SelectE[1])>>rshiftE)>>1);
+    }else{
+      cntSelectE=_mm_popcnt_u64(((nextSelectE[0]&next1SelectE[0])>>rshiftE)>>1);
+    }
+    next[1].fs=bwt->c2Array[c[1]*4+c[0]]+bwt->occArray[lineS].base[c[0]*4+c[1]]+cntSelectS;
+    next[1].len=bwt->occArray[lineE].base[c[0]*4+c[1]]-bwt->occArray[lineS].base[c[0]*4+c[1]]+cntSelectE-cntSelectS;
+    next[1].readBegin=current->readBegin-2;
+    next[1].readEnd=current->readEnd;
+    return 2;
+}
+
+void printInterval(bwtintv_t *ik){
+  printf("%lu,%lu,%lu,%d,%d\n",ik->fs,ik->rs,ik->len,ik->readBegin,ik->readEnd);
+}
+  
+  
+int bwt_smem1a(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
 {
-	int i, j, c, ret;
-	bwtintv_t ik, jk; // 我要存储的是kv_push的结果
-	bwtintv_v a[2], *prev, *curr, *swap;
-	bwtint_t store[4][4],tmp,tmp2;
-
-	mem->n = 0;
-	if (q[x] > 3) return x + 1;
-	if (min_intv < 1) min_intv = 1; // the interval size should be at least 1
-	kv_init(a[0]); kv_init(a[1]);
-	prev = tmpvec && tmpvec[0]? tmpvec[0] : &a[0]; // use the temporary vector if provided
-	curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
-	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base，把碱基q[x]对应的interval存储在ik中。
-	ik.info = x + 1;
-	store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
-	store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
-	bwtint_t *occ=(bwtint_t *)(bwt->bwt);
-	bwtint_t *lineS=occ+(tmp=ik.x[1]-1)/64*8;
-	bwtint_t rshiftS=63-tmp%64;
-	bwtint_t *lineE=occ+(tmp=tmp+ik.x[2])/64*8;
-	bwtint_t rshiftE=63-tmp%64;
-	_mm_prefetch(lineS, _MM_HINT_T1);
-	_mm_prefetch(lineE, _MM_HINT_T1);
-
-	for (i = x + 1, curr->n = 0; ((i == len)+((c = 3 - q[i])<0))==0; ++i) { // forward search
-	  BF(lineS, lineE, rshiftS, rshiftE, store);
-	  lineS=occ+(tmp=store[1][c]-1)/64*8;
-	  rshiftS=63-tmp%64;
-	  lineE=occ+(tmp=tmp+store[2][c])/64*8;
-	  rshiftE=63-tmp%64;
-	  _mm_prefetch(lineS, _MM_HINT_T1);
-	  _mm_prefetch(lineE, _MM_HINT_T1);
-	  tmp2=store[0][c];
-	  store[0][3]=tmp2+((store[1][c]<=bwt->primary)&&(tmp>=bwt->primary));
-	  tmp=store[2][c];
-	  if (tmp != ik.x[2]) { // change of the interval size
-	    kv_push(bwtintv_t, *curr, ik);
-	    if (tmp < min_intv) break; // the interval size is too small to be extended further
-	  }
-	  ik.x[0]=tmp2;ik.x[1]=store[1][c];ik.x[2]=tmp; ik.info = i + 1;
-	}
-	if (((i == len) + (c<0))>0 ) kv_push(bwtintv_t, *curr, ik); // push the last interval if we reach the end
+  int i, ret;
+  bwtintv_v a[2], *curr;
+  bwtintv_t *ik,*jk,*swapij;
+  ik=(bwtintv_t *)calloc(2,sizeof(bwtintv_t));
+  jk=(bwtintv_t *)calloc(2,sizeof(bwtintv_t));
 	
-	bwt_reverse_intvs(curr); // s.t. smaller intervals (i.e. longer matches) visited first
-	ret = curr->a[0].info; // this will be the returned value
+  mem->n = 0;
+  if (q[x] > 3) return x + 1;
+  if (min_intv < 1) min_intv = 1; // the interval size should be at least 1
+  kv_init(a[0]); kv_init(a[1]);
+  curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
+  //bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base
+  ik[1].fs=lbwt->c1Array[q[x]];ik[1].rs=lbwt->c1Array[3-q[x]];
+  ik[1].len=lbwt->c1Array[q[x]+1]-lbwt->c1Array[q[x]];
+  ik[1].readBegin=x;ik[1].readEnd=x+1;
+  kv_push(bwtintv_t,*curr,ik[1]);
+  //printInterval(ik+1);
 	
-	i=x;
-	do { // backward search for MEMs
-		swap = curr; curr = prev; prev = swap;
-		curr->n = 0;
-		i--;
-		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
-		if(c<0){
-			ik=prev->a[0]; ik.info |= (uint64_t)(i + 1)<<32;
-			kv_push(bwtintv_t, *mem, ik);
-		}else{
-			for (j = 0; j < prev->n; ++j) {
-				bwtintv_t *p = &prev->a[j];
-	  lineS=occ+(tmp=p->x[0]-1)/64*8;
-	  rshiftS=63-tmp%64;
-	  lineE=occ+(tmp=tmp+p->x[2])/64*8;
-	  rshiftE=63-tmp%64;
-	  store[0][3]=p->x[1]+((p->x[0]<=bwt->primary)&&(tmp>=bwt->primary));
-	  BF(lineS, lineE, rshiftS, rshiftE, store);
-	  tmp2=store[2][c];
-				if (tmp2 < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
-					if (mem->n == 0 || i + 1 < mem->a[mem->n-1].info>>32) { // skip contained matches
-						ik = *p; ik.info |= (uint64_t)(i + 1)<<32;
-						kv_push(bwtintv_t, *mem, ik);
-					}
-					 // otherwise the match is contained in another longer match
-				} else if (curr->n == 0 || tmp2 != curr->a[curr->n-1].x[2]) {
-					jk.info = p->info;
-					jk.x[0]=store[1][c];jk.x[1]=store[0][c];jk.x[2]=tmp2;
-					kv_push(bwtintv_t, *curr, jk);
-				}
-			}
-		}
-	}while(curr->n>0);
-	bwt_reverse_intvs(mem); // s.t. sorted by the start coordinate
+  char cc[2];
+  for (i = x + 1, curr->n = 0; i<len; i=i+2) { // forward search
+    cc[0]=q[i];
+    cc[1]=(i==len-1?4:q[i+1]);
+    int retf=forwardExtensionTwoStepFsRs(lbwt,cc,ik+1,jk);
+    //printInterval(jk); printInterval(jk+1);
+    if(retf==0){
+      break;
+    }else if(retf==1){
+      if(jk[0].len<min_intv) break;
+      kv_push(bwtintv_t,*curr,jk[0]);
+    }else{
+      if(jk[0].len<min_intv) break;
+      kv_push(bwtintv_t,*curr,jk[0]);
+      if(jk[1].len<min_intv) break;
+      kv_push(bwtintv_t,*curr,jk[1]);
+      swapij=ik; ik=jk;jk=swapij;
+    }
+  }
+  remove_duplicate_intvs(curr);
+  bwt_reverse_intvs(curr); // s.t. smaller intervals (i.e. longer matches) visited first
+  ret = curr->a[0].readEnd; // this will be the returned value
+	
+  int lastBegin=x+1;
+  for(int ii=0;ii<curr->n;ii++){
+    ik[0]=curr->a[ii];
+    for(int jj=x-1;jj>-1;jj=jj-2){
+      cc[1]=q[jj];cc[0]=jj==0?4:q[jj-1];
+      int retf=backwardExtensionTwoStepFs(lbwt,cc,ik,jk);
+      /* printf("backward"); */
+      /* printInterval(jk);printInterval(jk+1); */
+      if(retf==0){
+	break;
+      }else if(retf==1){
+	if(jk[0].len>=min_intv){
+	  ik[0]=jk[0];
+	}
+	break;
+      }else{
+	if(jk[1].len>=min_intv){
+	  ik[0]=jk[1];
+	}else if(jk[0].len>=min_intv){
+	  ik[0]=jk[0];
+	  break;
+	}else{
+	  break;
+	}
+      }
+    }
+    if(ik[0].readBegin<lastBegin){
+      lastBegin=ik[0].readBegin;
+      kv_push(bwtintv_t,*mem,ik[0]);
+    }
+  }
+  bwt_reverse_intvs(mem); // s.t. sorted by the start coordinate
 
-	if (tmpvec == 0 || tmpvec[0] == 0) free(a[0].a);
-	if (tmpvec == 0 || tmpvec[1] == 0) free(a[1].a);
-	return ret;
+  free(ik);free(jk);
+  if (tmpvec == 0 || tmpvec[0] == 0) free(a[0].a);
+  if (tmpvec == 0 || tmpvec[1] == 0) free(a[1].a);
+  return ret;
 }
 
-int bwt_smem1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
+int bwt_smem1(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
 {
-	return bwt_smem1b(bwt, len, q, x, min_intv, mem, tmpvec);
+  return bwt_smem1a(lbwt, len, q, x, min_intv, mem, tmpvec);
 }
 
-int bwt_seed_strategy1(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem)
+int bwt_seed_strategy1(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_len, int max_intv, bwtintv_t *mem)
 {
-	int i, c;
-	bwtintv_t ik;
-	bwtint_t store[4][4],tmp,tmp2;
-
-	memset(mem, 0, sizeof(bwtintv_t));
-	if (q[x] > 3) return x + 1;
-	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base
-	store[3][0]=bwt->L2[0]+1; store[3][1]=bwt->L2[1]+1; store[3][2]=bwt->L2[2]+1;store[3][3]=bwt->L2[3]+1;
-	store[0][3]=ik.x[0]+((ik.x[1]<=bwt->primary)&&((ik.x[1]+ik.x[2]-1)>=bwt->primary));
-	bwtint_t *occ=(bwtint_t *)(bwt->bwt);
-	bwtint_t *lineS=occ+(tmp=ik.x[1]-1)/64*8;
-	bwtint_t rshiftS=63-tmp%64;
-	bwtint_t *lineE=occ+(tmp=tmp+ik.x[2])/64*8;
-	bwtint_t rshiftE=63-tmp%64;
-	_mm_prefetch(lineS, _MM_HINT_T1);
-	_mm_prefetch(lineE, _MM_HINT_T1);
-	min_len+=x;
-	for (i = x + 1; ((i < len)+((c = 3 - q[i])>=0))==2; ++i) { // forward search
-	  BF(lineS, lineE, rshiftS, rshiftE, store);
-	  lineS=occ+(tmp=store[1][c]-1)/64*8;
-	  rshiftS=63-tmp%64;
-	  lineE=occ+(tmp=tmp+store[2][c])/64*8;
-	  rshiftE=63-tmp%64;
-	  _mm_prefetch(lineS, _MM_HINT_T1);
-	  _mm_prefetch(lineE, _MM_HINT_T1);
-	  tmp2=store[0][c];
-	  store[0][3]=tmp2+((store[1][c]<=bwt->primary)&&(tmp>=bwt->primary));
-	  if ((store[2][c] < max_intv) && (i>= min_len)) {
-	    mem->x[0]=tmp2; mem->x[1]=store[1][c];mem->x[2]=store[2][c];
-	    mem->info = (uint64_t)x<<32 | (i + 1);
-	    break;
-	  }
-	}
-	return len>(i+1)?(i+1):len;
-}
-int bwt_smem1a(const bwt_t *bwt, int len, const uint8_t *q, int x, int min_intv, uint64_t max_intv, bwtintv_v *mem, bwtintv_v *tmpvec[2])
-{
-	int i, j, c, ret;
-	bwtintv_t ik, ok[4]; // 我要存储的是kv_push的结果
-	bwtintv_v a[2], *prev, *curr, *swap;
-
-	mem->n = 0;
-	if (q[x] > 3) return x + 1;
-	if (min_intv < 1) min_intv = 1; // the interval size should be at least 1
-	kv_init(a[0]); kv_init(a[1]);
-	prev = tmpvec && tmpvec[0]? tmpvec[0] : &a[0]; // use the temporary vector if provided
-	curr = tmpvec && tmpvec[1]? tmpvec[1] : &a[1];
-	bwt_set_intv(bwt, q[x], ik); // the initial interval of a single base，把碱基q[x]对应的interval存储在ik中。
-	ik.info = x + 1;
-
-	for (i = x + 1, curr->n = 0; i < len; ++i) { // forward search
-		if (ik.x[2] < max_intv) { // an interval small enough
-			kv_push(bwtintv_t, *curr, ik);
-			break;
-		} else if (q[i] < 4) { // an A/C/G/T base
-			c = 3 - q[i]; // complement of q[i], 因为是forward extention，所以用互补碱基
-			bwt_extend(bwt, &ik, ok, 0);
-			if (ok[c].x[2] != ik.x[2]) { // change of the interval size
-				kv_push(bwtintv_t, *curr, ik);
-				if (ok[c].x[2] < min_intv) break; // the interval size is too small to be extended further
-			}
-			ik = ok[c]; ik.info = i + 1;
-		} else { // an ambiguous base
-			kv_push(bwtintv_t, *curr, ik);
-			break; // always terminate extension at an ambiguous base; in this case, i<len always stands
-		}
-	}
-	if (i == len) kv_push(bwtintv_t, *curr, ik); // push the last interval if we reach the end
-	bwt_reverse_intvs(curr); // s.t. smaller intervals (i.e. longer matches) visited first
-	ret = curr->a[0].info; // this will be the returned value
-	swap = curr; curr = prev; prev = swap;
-
-	for (i = x - 1; i >= -1; --i) { // backward search for MEMs
-		c = i < 0? -1 : q[i] < 4? q[i] : -1; // c==-1 if i<0 or q[i] is an ambiguous base
-		for (j = 0, curr->n = 0; j < prev->n; ++j) {
-			bwtintv_t *p = &prev->a[j];
-			if (c >= 0 && ik.x[2] >= max_intv) bwt_extend(bwt, p, ok, 1);
-			if (c < 0 || ik.x[2] < max_intv || ok[c].x[2] < min_intv) { // keep the hit if reaching the beginning or an ambiguous base or the intv is small enough
-				if (curr->n == 0) { // test curr->n>0 to make sure there are no longer matches
-					if (mem->n == 0 || i + 1 < mem->a[mem->n-1].info>>32) { // skip contained matches
-						ik = *p; ik.info |= (uint64_t)(i + 1)<<32;
-						kv_push(bwtintv_t, *mem, ik);
-					}
-				} // otherwise the match is contained in another longer match
-			} else if (curr->n == 0 || ok[c].x[2] != curr->a[curr->n-1].x[2]) {
-				ok[c].info = p->info;
-				kv_push(bwtintv_t, *curr, ok[c]);
-			}
-		}
-		if (curr->n == 0) break;
-		swap = curr; curr = prev; prev = swap;
-	}
-	bwt_reverse_intvs(mem); // s.t. sorted by the start coordinate
-
-	if (tmpvec == 0 || tmpvec[0] == 0) free(a[0].a);
-	if (tmpvec == 0 || tmpvec[1] == 0) free(a[1].a);
-	return ret;
+  int i;
+  char cc[2];
+  bwtintv_t *ik,*jk,*swapij;
+  bwtintv_t ika[2],jka[2];
+  ik=ika;jk=jka;
+  memset(mem,0,sizeof(bwtintv_t));
+  if(q[x]>3) return x+1;
+  ik[1].fs=lbwt->c1Array[q[x]];ik[1].rs=lbwt->c1Array[3-q[x]];
+  ik[1].len=lbwt->c1Array[q[x]+1]-lbwt->c1Array[q[x]];
+  ik[1].readBegin=x;ik[1].readEnd=x+1;
+  for(i=x+1;i<len;i++){
+    cc[0]=q[i];
+    cc[1]=(i==len-1?4:q[i+1]);
+    int retf=forwardExtensionTwoStepFsRs(lbwt,cc,ik+1,jk);
+    if(retf==0){
+      return ik[1].readEnd;
+    }else if(retf==1){
+      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
+	*mem=jk[0];
+      }
+      return ik[1].readEnd+1;
+    }else {
+      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
+	*mem=jk[0];
+	return jk[0].readEnd;
+      }else if(jk[1].len<max_intv && jk[1].readEnd-jk[1].readBegin>=min_len){
+	*mem=jk[1];
+	return jk[1].readEnd;
+      }else{
+	swapij=ik;ik=jk;jk=swapij;
+      }
+    }
+  }
+  return len;
 }
 
 /*************************
@@ -549,6 +624,16 @@ void bwt_dump_bwt(const char *fn, const bwt_t *bwt)
   err_fclose(fp);
 }
 
+void lbwt_dump_lbwt(const char *fn,const lbwt_t *lbwt){
+  FILE *fp;
+  fp=xopen(fn,"wb");
+  err_fwrite(&lbwt->refLen,sizeof(uint64_t),1,fp);
+  err_fwrite(lbwt->c1Array,sizeof(uint64_t),5,fp);
+  err_fwrite(lbwt->c2Array,sizeof(uint64_t),16,fp);
+  err_fwrite(lbwt->occArray,sizeof(Occline),(lbwt->refLen*2+127)/128,fp);
+  err_fflush(fp);
+  err_fclose(fp);
+}
 void bwt_dump_sa(const char *fn, const bwt_t *bwt)
 {
   FILE *fp;
@@ -558,6 +643,16 @@ void bwt_dump_sa(const char *fn, const bwt_t *bwt)
   err_fwrite(&bwt->sa_intv, sizeof(bwtint_t), 1, fp);
   err_fwrite(&bwt->seq_len, sizeof(bwtint_t), 1, fp);
   err_fwrite(bwt->sa + 1, sizeof(bwtint_t), bwt->n_sa - 1, fp);
+  err_fflush(fp);
+  err_fclose(fp);
+}
+
+void bwt_dump_sa_lambert(const char *fn, const bwt_t *bwt){
+  FILE *fp;
+  fp=xopen(fn,"wb");
+  uint64_t seq_len=bwt->seq_len/2;
+  err_fwrite(&seq_len,sizeof(uint64_t),1,fp);//the number of entries of suffix array
+  err_fwrite(bwt->sa,sizeof(uint32_t),seq_len+(seq_len+15)/16,fp);//the encoded suffix array, low32 at begin, then the high2 at end.
   err_fflush(fp);
   err_fclose(fp);
 }
@@ -590,12 +685,36 @@ void bwt_restore_sa(const char *fn, bwt_t *bwt)
 
   bwt->n_sa = (bwt->seq_len + bwt->sa_intv) / bwt->sa_intv;
   bwt->sa = (bwtint_t*)calloc(bwt->n_sa, sizeof(bwtint_t));
+  if(bwt->sa==NULL){
+    printf("bwt_restore_sa error:: cannot allocate enough memory\n");
+  }
   bwt->sa[0] = -1;
 
   fread_fix(fp, sizeof(bwtint_t) * (bwt->n_sa - 1), bwt->sa + 1);
   err_fclose(fp);
 }
 
+void bwt_restore_sa_lambert(const char *fn,lbwt_t *lbwt){
+  FILE *fp;
+  fp=xopen(fn,"rb");
+  uint64_t seq_len;
+  err_fread_noeof(&seq_len,sizeof(uint64_t),1,fp);
+  if(lbwt->refLen*2!=seq_len){
+    printf("bwt_restore_sa_lambert error:: refLen*2!=seq_len\n");
+  }
+  lbwt->sa_low32=(uint32_t*)calloc(seq_len,sizeof(uint32_t));
+  lbwt->sa_high2=(uint32_t*)calloc((seq_len+15)/16,sizeof(uint32_t));
+  if(lbwt->sa_low32==NULL){
+    printf("bwt_restore_sa_lambert error:: cannot allocate enough memory\n");
+  }
+  if(lbwt->sa_high2==NULL){
+    printf("bwt_restore_sa_lambert error:: cannot allocate enough memory\n");
+  }
+  err_fread_noeof(lbwt->sa_low32,sizeof(uint32_t),seq_len,fp);
+  err_fread_noeof(lbwt->sa_high2,sizeof(uint32_t),(seq_len+15)/16,fp);
+  err_fclose(fp);
+}
+  
 bwt_t *bwt_restore_bwt(const char *fn)
 {
   bwt_t *bwt;
@@ -617,6 +736,24 @@ bwt_t *bwt_restore_bwt(const char *fn)
   return bwt;
 }
 
+lbwt_t *lbwt_restore_lbwt(const char *fn){
+  lbwt_t *lbwt;
+  FILE *fp;
+  lbwt=(lbwt_t*)calloc(1,sizeof(lbwt_t));
+  fp=xopen(fn,"rb");
+  err_fread_noeof(&lbwt->refLen,sizeof(uint64_t),1,fp);
+  err_fread_noeof(lbwt->c1Array,sizeof(uint64_t),5,fp);
+  err_fread_noeof(lbwt->c2Array,sizeof(uint64_t),16,fp);
+  lbwt->occArray=(Occline*)calloc((lbwt->refLen*2+127)/128,sizeof(Occline));
+  err_fread_noeof(lbwt->occArray,sizeof(Occline),(lbwt->refLen*2+127)/128,fp);
+  if(lbwt->occArray==NULL){
+    printf("lbwt_restore_lbwt error:: cannot allocate enough memory\n");
+  }
+  err_fflush(fp);
+  err_fclose(fp);
+  return lbwt;
+}
+
 void bwt_destroy(bwt_t *bwt)
 {
   if (bwt == 0) return;
@@ -624,43 +761,85 @@ void bwt_destroy(bwt_t *bwt)
   free(bwt);
 }
 
-void bwt_update_bwt_lambert(bwt_t *bwt){
-  bwtint_t len=(bwt->seq_len+64)/64*8;
-  //bwtint_t len=(bwt->seq_len+63)/64*8;
-  bwt->bwt_size=len*2;
-  bwtint_t *array=(bwtint_t *)calloc(len,sizeof(bwtint_t));
-  bwtint_t *old=(bwtint_t *)bwt->bwt;
-  bwtint_t cnt[4];
-  bwtint_t occ[4];
-  
+void lbwt_destroy(lbwt_t *lbwt){
+  if(lbwt==0) return;
+  free(lbwt->occArray);free(lbwt->sa_low32);free(lbwt->sa_high2);
+  free(lbwt);
+}
+
+#define _get_sahigh2(sahigh2,l) (((sahigh2)[(l)>>4]>>(((~(l))&15)<<1))&3)
+#define _get_pac(pac, l) ((pac)[(l)>>2]>>((~(l)&3)<<1)&3)
+void constructOccArray(lbwt_t *lbwt, char *pac, bwt_t *bwt){
+  uint64_t seq_len=bwt->seq_len/2;
+  lbwt->occArray=(Occline*)calloc((seq_len+127)/128,sizeof(Occline));
+  if(lbwt->occArray==NULL){
+    printf("constructOccArray error:: cannot allocate enough memory\n");
+  }
+  uint32_t *sahigh2=(uint32_t*)bwt->sa+seq_len;
+  uint32_t *bwtsa=(uint32_t*)bwt->sa;
+  //c1Array, c2Array set initial value
   for(int i=0;i<4;i++){
-    cnt[i]=0;
-    occ[i]=0;
+    lbwt->c1Array[i]=0;
   }
-  
-  for(bwtint_t i=0;i<=bwt->seq_len;i++){
-    if(i%64==0){
-      bwtint_t k=i/64*8;
-      for(int ii=0;ii<4;ii++){
-	array[k+ii]=cnt[ii];
+  for(int i=0;i<16;i++){
+    lbwt->c2Array[i]=0;
+  }
+  //fill occArray
+  for(uint64_t i=0;i<seq_len;i++){
+    uint64_t offsetOcc=i%128;
+    uint64_t lineOcc=i/128;
+    //set Occline.base and initialize Occline.offset
+    if(i%128==0){
+      for(int j=0;j<16;j++){
+	lbwt->occArray[lineOcc].base[j]=lbwt->c2Array[(j&3)*4+(j>>2)];
+      }
+      for(int j=0;j<8;j++){
+	lbwt->occArray[lineOcc].offset[j]=0ull;
       }
     }
-    if(i!=bwt->primary){
-      bwtint_t j=i-(i>bwt->primary);
-      uint32_t tmp=((uint32_t *)old + j/128*16+8)[(j%128)/16];
-      //int c=(old[j/128*8+4+(j%128)/32]>>((31ll-j%32)*2))&3ll;
-      int c=(tmp>>((15ll-j%16)*2))&3ll;
-      cnt[c]++;
-      occ[c]=occ[c]+(1ll<<(63-(i%64)));
-    }
-    if(i%64==63||i==bwt->seq_len){
-      bwtint_t k=i/64*8;
-      for(int ii=0;ii<4;ii++){
-	array[k+4+ii]=occ[ii];
-	occ[ii]=0;
+    //get B string and the second last string
+    uint64_t sa=bwtsa[i]+((_get_sahigh2(sahigh2,i)&3ull)<<32);
+    char b[2];
+    b[0]=_get_pac(pac,sa+seq_len-2);
+    b[1]=_get_pac(pac,sa+seq_len-1);
+    /* temporal code used to generate human readable suffix array and pac information for debug */
+    /* char dict[4];dict[0]='A';dict[1]='C';dict[2]='G';dict[3]='T'; */
+    /* printf("i=%lu,sa=%lu,prefix=",i,sa); */
+    /* for(int jj=0;jj<20;jj++) */
+    /*   printf("%c",dict[(int)_get_pac(pac,sa+jj)]); */
+    /* printf("\n"); */
+    /* temporal code end */
+    
+    //count
+    lbwt->c1Array[(int)b[1]]++;
+    lbwt->c2Array[(int)b[0]*4+b[1]]++;
+    //set Occline.offset
+    uint64_t c[4];
+    c[0]=(b[0]&2)>>1; c[1]=b[0]&1; c[2]=(b[1]&2)>>1; c[3]=b[1]&1;
+    for(int j=0;j<4;j++){
+      if(offsetOcc<64){
+	lbwt->occArray[lineOcc].offset[2*j]|=c[j]<<(63-offsetOcc);
+      }else{
+	lbwt->occArray[lineOcc].offset[2*j+1]|=c[j]<<(127-offsetOcc);
       }
     }
   }
-  free(old);
-  bwt->bwt=(uint32_t *)array;
+  //correct the c2Array
+  uint64_t tmp=0;
+  for(int i=0;i<16;i++){
+    uint64_t tmp2=lbwt->c2Array[i];
+    lbwt->c2Array[i]=tmp;
+    tmp+=tmp2;
+  }
+  if(tmp!=seq_len){
+    printf("build FDM-index error::the occArray error!\n");
+  }
+  //correct the c1Array
+  tmp=0;
+  for(int i=0;i<4;i++){
+    uint64_t tmp2=lbwt->c1Array[i];
+    lbwt->c1Array[i]=tmp;
+    tmp+=tmp2;
+  }
+  lbwt->c1Array[4]=tmp;
 }
