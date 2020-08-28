@@ -115,7 +115,7 @@ void bwt_cal_sa_and_sample(bwt_t *bwt){
   }
   //now isa is isaZero, sa=0
   i=0;
-  for(int j=0;i<bwt->seq_len+1;i++){
+  for(uint64_t j=0;i<bwt->seq_len+1;i++){
     if(i==isa){
       salow32[j]=0;
       _set_sahigh2(sahigh2,j,0);
