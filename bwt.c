@@ -115,23 +115,28 @@ void bwt_cal_sa_and_sample(bwt_t *bwt){
   }
   //now isa is isaZero, sa=0
   i=0;
+  uint32_t *sahigh2NEW=(uint32_t*)calloc((bwt->seq_len/2+15)/16,sizeof(uint32_t));
+  if(sahigh2NEW==NULL){
+    printf("bwt_cal_sa_and_sample error:: cannot allocate sahigh2NEW memory\n");
+  }
   for(uint64_t j=0;i<bwt->seq_len+1;i++){
     if(i==isa){
       salow32[j]=0;
-      _set_sahigh2(sahigh2,j,0);
+      _set_sahigh2(sahigh2NEW,j,0);
       j++;
     }
     if(_get_sahigh2(sahigh2,i)!=0 || salow32[i]!=0){
       salow32[j]=salow32[i];
-      _set_sahigh2(sahigh2,j,_get_sahigh2(sahigh2,i));
+      _set_sahigh2(sahigh2NEW,j,_get_sahigh2(sahigh2,i));
       j++;
     }
   }
-  memmove(bwtsa+bwt->seq_len/2,sahigh2,(bwt->seq_len/2+15)/16*sizeof(uint32_t));
+  memmove(bwtsa+bwt->seq_len/2,sahigh2NEW,(bwt->seq_len/2+15)/16*sizeof(uint32_t));
   bwtsa=(uint32_t *)realloc(bwtsa,(bwt->seq_len/2+(bwt->seq_len/2+15)/16)*sizeof(uint32_t));
   if(bwtsa==NULL){
     printf("bwt_cal_sa_and_sample error:: cannot reallocate memory error\n");
   }
+  free(sahigh2NEW);
   bwt->sa=(bwtint_t*)bwtsa;
 }
 
