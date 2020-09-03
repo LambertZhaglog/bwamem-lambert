@@ -259,7 +259,6 @@ mem_chain_v mem_chain(const mem_opt_t *opt, const lbwt_t *lbwt, const bntseq_t *
   mem_collect_intv(opt, lbwt, len, seq, aux);
   for (i = 0, b = e = l_rep = 0; i < aux->mem.n; ++i) { // compute frac_rep
     bwtintv_t *p = &aux->mem.a[i];
-    //int sb = (p->info>>32), se = (uint32_t)p->info;
     int sb=p->readBegin,se=p->readEnd;
     if (p->len <= opt->max_occ) continue;
     if (sb > e) l_rep += e - b, b = sb, e = se;
@@ -268,19 +267,16 @@ mem_chain_v mem_chain(const mem_opt_t *opt, const lbwt_t *lbwt, const bntseq_t *
   l_rep += e - b;
   for (i = 0; i < aux->mem.n; ++i) {
     bwtintv_t *p = &aux->mem.a[i];
-    int step, count, slen = p->readEnd-p->readBegin;//(uint32_t)p->info - (p->info>>32); // seed length
+    int step, count, slen = p->readEnd-p->readBegin; // seed length
     int64_t k;
     // if (slen < opt->min_seed_len) continue; // ignore if too short or too repetitive
-    //step = p->x[2] > opt->max_occ? p->x[2] / opt->max_occ : 1;
     step = p->len > opt->max_occ? p->len / opt->max_occ : 1;
     for (k = count = 0; k < p->len && count < opt->max_occ; k += step, ++count) {
       mem_chain_t tmp, *lower, *upper;
       mem_seed_t s;
       int rid, to_add = 0;
-      //s.rbeg = tmp.pos = bwt_sa(bwt, p->x[0] + k); // this is the base coordinate in the forward-reverse reference
-      //s.rbeg=tmp.pos=bwt->sa[p->x[0]+k];
-      s.rbeg=tmp.pos=lbwt->sa_low32[p->fs]+((3ull&_get_sahigh2(lbwt->sa_high2,p->fs))<<32);
-      s.qbeg = p->readBegin;//p->info>>32;
+      s.rbeg=tmp.pos=lbwt->sa_low32[p->fs+k]+((3ull&_get_sahigh2(lbwt->sa_high2,p->fs+k))<<32);// this is the base coordinate in the forward-reverse reference
+      s.qbeg = p->readBegin;
       s.score= s.len = slen;
       if(s.rbeg+p->readEnd-p->readBegin>2*lbwt->refLen) continue; //condition: cycle rotation, out of boundary
       rid = bns_intv2rid(bns, s.rbeg, s.rbeg + s.len);
