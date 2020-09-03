@@ -202,26 +202,24 @@ static void remove_duplicate_intvs(bwtintv_v *p){
   }
 }
 
-void __attribute__((optimize("O0"))) notOptimize(uint64_t *a, uint64_t *b) {
-  uint64_t c=a[0]&b[0];
-}
 int forwardExtensionTwoStepFsRs(const lbwt_t *bwt,char c[2],bwtintv_t *current,bwtintv_t *next){
     //return value: the step of function, if c[0]>4,return 0, if c[1]>4, return 1, else return 2;
   uint64_t lineS=current->rs/128;
   uint64_t lineE=(current->rs+current->len)/128;
+  char cccc[2];
+  cccc[0]=(bwt->occArray[lineS].base[0]==0)&(bwt->occArray[lineS].offset[0]==0);
+  cccc[1]=(bwt->occArray[lineE].base[0]==0)&(bwt->occArray[lineE].offset[0]==0);
     int rshiftS=63-current->rs%64;//
     int rshiftE=63-(current->rs+current->len)%64;
     int greatS=(current->rs)%128>=64;
     int greatE=(current->rs+current->len)%128>=64;
     uint64_t occ1S[4], occ1E[4];
     uint32_t *tmp=(bwt->occArray[lineS].base);
-    noteOptimize((uint64_t *)bwt->occArray[lineS].base,bwt->occArray[lineS].offset);
     occ1S[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
     occ1S[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
     occ1S[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
     occ1S[3]=tmp[12]+tmp[13]+tmp[14]+tmp[15];
     tmp=(bwt->occArray[lineE].base);
-    noteOptimize((uint64_t *)bwt->occArray[lineE].base,bwt->occArray[lineE].offset);
     occ1E[0]=tmp[0]+tmp[1]+tmp[2]+tmp[3];
     occ1E[1]=tmp[4]+tmp[5]+tmp[6]+tmp[7];
     occ1E[2]=tmp[8]+tmp[9]+tmp[10]+tmp[11];
@@ -375,6 +373,8 @@ int forwardExtensionTwoStepFsRs(const lbwt_t *bwt,char c[2],bwtintv_t *current,b
     next[1].fs=next[0].fs+cntUnselectE-cntUnselectS+baseUnselectE-baseUnselectS;
     next[1].readBegin=current->readBegin;
     next[1].readEnd=current->readEnd+2;
+    c[0]=cccc[0];
+    c[1]=cccc[1];
     return 2;
 }
 
