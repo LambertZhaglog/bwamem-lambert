@@ -594,24 +594,25 @@ int bwt_seed_strategy1(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int
   ik[1].fs=lbwt->c1Array[q[x]];ik[1].rs=lbwt->c1Array[3-q[x]];
   ik[1].len=lbwt->c1Array[q[x]+1]-lbwt->c1Array[q[x]];
   ik[1].readBegin=x;ik[1].readEnd=x+1;
-  for(i=x+1;i<len;i++){
+  for(i=x+1;i<len;i=i+2){
     cc[0]=q[i];
     cc[1]=(i==len-1?4:q[i+1]);
     int retf=forwardExtensionTwoStepFsRs(lbwt,cc,ik+1,jk);
     if(retf==0){
-      return ik[1].readEnd;
+      return i+1;
     }else if(retf==1){
       if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
 	*mem=jk[0];
+	return i+1;
       }
-      return ik[1].readEnd+1;
+      return i+2;
     }else {
       if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
 	*mem=jk[0];
-	return jk[0].readEnd;
+	return i+1;
       }else if(jk[1].len<max_intv && jk[1].readEnd-jk[1].readBegin>=min_len){
 	*mem=jk[1];
-	return jk[1].readEnd;
+	return i+2;
       }else{
 	swapij=ik;ik=jk;jk=swapij;
       }
@@ -755,7 +756,7 @@ lbwt_t *lbwt_restore_lbwt(const char *fn){
   err_fread_noeof(&lbwt->refLen,sizeof(uint64_t),1,fp);
   err_fread_noeof(lbwt->c1Array,sizeof(uint64_t),5,fp);
   err_fread_noeof(lbwt->c2Array,sizeof(uint64_t),16,fp);
-  lbwt->occArray=(Occline*)calloc((lbwt->refLen*2+127)/128,sizeof(Occline));
+  lbwt->occArray=(Occline*)valloc((lbwt->refLen*2+127)/128*sizeof(Occline));
   err_fread_noeof(lbwt->occArray,sizeof(Occline),(lbwt->refLen*2+127)/128,fp);
   if(lbwt->occArray==NULL){
     printf("lbwt_restore_lbwt error:: cannot allocate enough memory\n");
