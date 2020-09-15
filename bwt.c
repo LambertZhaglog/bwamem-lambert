@@ -206,9 +206,6 @@ int forwardExtensionTwoStepFsRs(const lbwt_t *bwt,char c[2],bwtintv_t *current,b
     //return value: the step of function, if c[0]>4,return 0, if c[1]>4, return 1, else return 2;
   uint64_t lineS=current->rs/128;
   uint64_t lineE=(current->rs+current->len)/128;
-  char cccc[2];
-  cccc[0]=(bwt->occArray[lineS].base[0]==0)&(bwt->occArray[lineS].offset[0]==0);
-  cccc[1]=(bwt->occArray[lineE].base[0]==0)&(bwt->occArray[lineE].offset[0]==0);
     int rshiftS=63-current->rs%64;//
     int rshiftE=63-(current->rs+current->len)%64;
     int greatS=(current->rs)%128>=64;
@@ -373,8 +370,6 @@ int forwardExtensionTwoStepFsRs(const lbwt_t *bwt,char c[2],bwtintv_t *current,b
     next[1].fs=next[0].fs+cntUnselectE-cntUnselectS+baseUnselectE-baseUnselectS;
     next[1].readBegin=current->readBegin;
     next[1].readEnd=current->readEnd+2;
-    c[0]=cccc[0];
-    c[1]=cccc[1];
     return 2;
 }
 

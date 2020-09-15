@@ -565,7 +565,7 @@ int ksw_extend22(int qlen, const uint8_t *query, int tlen, const uint8_t *target
 }
 
 /* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), use SIMD SSE2, standard SW not Banded SW, but has the stripped feature */
-int ksw_extend23(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
 	/* code wiki
 	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
 	 * let E for value from up, F for value from left
@@ -731,7 +731,7 @@ int ksw_extend23(int qlen, const uint8_t *query, int tlen, const uint8_t *target
 }
 
 /* ksw_extend2 version coded by lambert zhaglog, space complexy O(n), use SIMD AVX2, standard SW not Banded SW, but has the stripped feature */
-int ksw_extend2(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
+int ksw_extend23(int qlen, const uint8_t *query, int tlen, const uint8_t *target, int m, const int8_t *mat, int o_del, int e_del, int o_ins, int e_ins, int w, int end_bonus, int zdrop, int h0, int *_qle, int *_tle, int *_gtle, int *_gscore, int *_max_off){
 	/* code wiki
 	 * let column[a,b] for query[a-1,b-1], row[a,b] for ref[a-1,b-1]
 	 * let E for value from up, F for value from left
