@@ -507,11 +507,12 @@ int bwt_smem1a(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_int
   ik[1].fs=lbwt->c1Array[q[x]];ik[1].rs=lbwt->c1Array[3-q[x]];
   ik[1].len=lbwt->c1Array[q[x]+1]-lbwt->c1Array[q[x]];
   ik[1].readBegin=x;ik[1].readEnd=x+1;
+  curr->n = 0;
   kv_push(bwtintv_t,*curr,ik[1]);
   //printInterval(ik+1);
 	
   char cc[2];
-  for (i = x + 1, curr->n = 0; i<len; i=i+2) { // forward search
+  for (i = x + 1; i<len; i=i+2) { // forward search
     cc[0]=q[i];
     cc[1]=(i==len-1?4:q[i+1]);
     int retf=forwardExtensionTwoStepFsRs(lbwt,cc,ik+1,jk);
@@ -521,6 +522,7 @@ int bwt_smem1a(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_int
     }else if(retf==1){
       if(jk[0].len<min_intv) break;
       kv_push(bwtintv_t,*curr,jk[0]);
+      break;
     }else{
       if(jk[0].len<min_intv) break;
       kv_push(bwtintv_t,*curr,jk[0]);
@@ -539,7 +541,6 @@ int bwt_smem1a(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int min_int
     for(int jj=x-1;jj>-1;jj=jj-2){
       cc[1]=q[jj];cc[0]=jj==0?4:q[jj-1];
       int retf=backwardExtensionTwoStepFs(lbwt,cc,ik,jk);
-      /* printf("backward"); */
       /* printInterval(jk);printInterval(jk+1); */
       if(retf==0){
 	break;
@@ -596,16 +597,16 @@ int bwt_seed_strategy1(const lbwt_t *lbwt, int len, const uint8_t *q, int x, int
     if(retf==0){
       return i+1;
     }else if(retf==1){
-      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
+      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>min_len){
 	*mem=jk[0];
 	return i+1;
       }
       return i+2;
     }else {
-      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>=min_len){
+      if(jk[0].len<max_intv && jk[0].readEnd-jk[0].readBegin>min_len){
 	*mem=jk[0];
 	return i+1;
-      }else if(jk[1].len<max_intv && jk[1].readEnd-jk[1].readBegin>=min_len){
+      }else if(jk[1].len<max_intv && jk[1].readEnd-jk[1].readBegin>min_len){
 	*mem=jk[1];
 	return i+2;
       }else{

@@ -87,7 +87,7 @@ mem_opt_t *mem_opt_init()
  * Collection SA invervals *
  ***************************/
 
-#define intv_lt(a, b) ((a).readBegin < (b).readBegin)
+#define intv_lt(a, b) ((a).readBegin == (b).readBegin ? (a).readEnd<(b).readEnd : (a).readBegin<(b).readBegin)
 KSORT_INIT(mem_intv, bwtintv_t, intv_lt)
 
 typedef struct {
